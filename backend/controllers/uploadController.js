@@ -55,9 +55,15 @@ const determineCellType = (value) => {
   }
   
   if (typeof value === 'number') {
-    // Check if it's an Excel date serial number (between 40000 and 50000 for modern dates)
-    // Excel date serial numbers for dates from 2009 onwards are typically in this range
-    if (value >= 40000 && value <= 50000 && value === Math.floor(value)) {
+    // Only convert very specific Excel date serial numbers
+    // These are the actual date serial numbers for month headers
+    const knownDateSerialNumbers = [
+      44927, 44958, 44986, 45017, 45047, 45078, 45108, 45139, 45170, 45200, 45231, 45261, // 2023
+      45292, 45323, 45352, 45383, 45413, 45444, 45474, 45505, 45536, 45566, 45597, 45627, // 2024
+      45658, 45689, 45719, 45750, 45781, 45811, 45842, 45873, 45903, 45934, 45965, 45995  // 2025
+    ];
+    
+    if (knownDateSerialNumbers.includes(value)) {
       return 'date';
     }
     return 'number';
@@ -149,7 +155,12 @@ const processExcelFile = async (filePath, fileRecord) => {
                 year: 'numeric',
                 month: 'short'
               });
-              console.log(`Converted Excel date ${cell.v} to ${cellValue}`);
+              console.log(`Converted Excel date ${cell.v} to ${cellValue} at row ${row}, col ${col}`);
+            }
+            
+            // Debug: Log some sample values to understand what's being processed
+            if (row <= 5 && col <= 10) {
+              console.log(`Row ${row}, Col ${col}: Value=${cellValue}, Type=${cellType}`);
             }
             
             const columnName = row === 0 ? String(cellValue) : `Column_${col}`;

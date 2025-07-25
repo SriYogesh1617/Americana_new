@@ -12,7 +12,14 @@ const {
   getWorksheetHeaders,
   getFormulaCells,
   getRowData,
-  getColumnData
+  getColumnData,
+  getDashboardStats,
+  getRecentActivities,
+  getAllWorksheets,
+  getDatabaseSchema,
+  getMonthlyStats,
+  getMonthlyUploads,
+  getMonthlyWorkbooks
 } = require('../controllers/dataController');
 
 // Workbook routes
@@ -32,5 +39,18 @@ router.get('/worksheets/:worksheetId/cells/:row/:col', getCellData);
 router.put('/worksheets/:worksheetId/cells/:row/:col', updateCellData);
 router.get('/worksheets/:worksheetId/rows/:row', getRowData);
 router.get('/worksheets/:worksheetId/columns/:col', getColumnData);
+
+// Dashboard routes
+router.get('/dashboard/stats', getDashboardStats);
+router.get('/dashboard/activities', getRecentActivities);
+
+// Database routes
+router.get('/worksheets', getAllWorksheets);
+router.get('/schema', getDatabaseSchema);
+
+// Monthly routes
+router.get('/monthly-stats', getMonthlyStats);
+router.get('/monthly-uploads', getMonthlyUploads);
+router.get('/monthly-workbooks', getMonthlyWorkbooks);
 
 module.exports = router; 

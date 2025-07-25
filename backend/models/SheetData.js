@@ -41,14 +41,18 @@ class SheetData {
     return result.rows[0];
   }
 
-  static async findByWorksheet(worksheetId, limit = 1000, offset = 0) {
-    const result = await query(
-      `SELECT * FROM sheet_data 
-       WHERE worksheet_id = $1 
-       ORDER BY row_index, column_index 
-       LIMIT $2 OFFSET $3`,
-      [worksheetId, limit, offset]
-    );
+  static async findByWorksheet(worksheetId, limit = null, offset = 0) {
+    let queryText = `SELECT * FROM sheet_data 
+                     WHERE worksheet_id = $1 
+                     ORDER BY row_index, column_index`;
+    let params = [worksheetId];
+    
+    if (limit !== null) {
+      queryText += ` LIMIT $2 OFFSET $3`;
+      params.push(limit, offset);
+    }
+    
+    const result = await query(queryText, params);
     return result.rows;
   }
 
@@ -141,6 +145,23 @@ class SheetData {
       [worksheetId]
     );
     return result.rows;
+  }
+
+  static async getTotalCount() {
+    const result = await query('SELECT COUNT(*) as count FROM sheet_data');
+    return parseInt(result.rows[0].count);
+  }
+
+  static async getMonthlyRecords(startDate, endDate) {
+    const result = await query(
+      `SELECT COUNT(*) as count 
+       FROM sheet_data sd
+       JOIN worksheets w ON sd.worksheet_id = w.id
+       JOIN workbooks wb ON w.workbook_id = wb.id
+       WHERE wb.created_at >= $1 AND wb.created_at <= $2`,
+      [startDate, endDate]
+    );
+    return parseInt(result.rows[0].count);
   }
 }
 

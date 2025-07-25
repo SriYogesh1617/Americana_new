@@ -88,6 +88,35 @@ class Workbook {
       worksheets: worksheetsResult.rows
     };
   }
+
+  static async getTotalCount() {
+    const result = await query('SELECT COUNT(*) as count FROM workbooks');
+    return parseInt(result.rows[0].count);
+  }
+
+  static async getRecentWorkbooks(limit = 10) {
+    const result = await query(
+      `SELECT w.*, f.original_name as file_name 
+       FROM workbooks w 
+       JOIN uploaded_files f ON w.file_id = f.id 
+       ORDER BY w.created_at DESC 
+       LIMIT $1`,
+      [limit]
+    );
+    return result.rows;
+  }
+
+  static async getMonthlyWorkbooks(startDate, endDate) {
+    const result = await query(
+      `SELECT w.*, f.original_name as file_name 
+       FROM workbooks w 
+       JOIN uploaded_files f ON w.file_id = f.id 
+       WHERE w.created_at >= $1 AND w.created_at <= $2 
+       ORDER BY w.created_at DESC`,
+      [startDate, endDate]
+    );
+    return result.rows;
+  }
 }
 
 module.exports = Workbook; 

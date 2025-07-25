@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 // Create axios instance
 const api = axios.create({
@@ -80,6 +80,19 @@ export const dataAPI = {
   updateCellData: (worksheetId, row, col, data) => api.put(`/data/worksheets/${worksheetId}/cells/${row}/${col}`, data),
   getRowData: (worksheetId, row) => api.get(`/data/worksheets/${worksheetId}/rows/${row}`),
   getColumnData: (worksheetId, col) => api.get(`/data/worksheets/${worksheetId}/columns/${col}`),
+  
+  // Dashboard
+  getDashboardStats: () => api.get('/data/dashboard/stats'),
+  getRecentActivities: (limit = 10) => api.get(`/data/dashboard/activities?limit=${limit}`),
+  getMonthlyStats: (month) => api.get(`/data/monthly-stats?month=${month}`),
+  
+  // Database
+  getAllWorksheets: (page = 1, limit = 20) => api.get(`/data/worksheets?page=${page}&limit=${limit}`),
+  getDatabaseSchema: () => api.get('/data/schema'),
+  
+  // Monthly View
+  getMonthlyUploads: (month) => api.get(`/data/monthly-uploads?month=${month}`),
+  getMonthlyWorkbooks: (month) => api.get(`/data/monthly-workbooks?month=${month}`),
 };
 
 // Export API
@@ -103,6 +116,24 @@ export const exportAPI = {
   createMacroCalculation: (workbookId, data) => api.post(`/export/workbooks/${workbookId}/macros`, data),
   getMacroCalculations: (workbookId) => api.get(`/export/workbooks/${workbookId}/macros`),
   executeMacroCalculation: (calculationId) => api.post(`/export/macros/${calculationId}/execute`),
+};
+
+// Demand Template API
+export const demandAPI = {
+  createDemandTemplate: (data) => api.post('/demand/templates', data),
+  getDemandTemplates: () => api.get('/demand/templates'),
+  getDemandTemplate: (templateId) => api.get(`/demand/templates/${templateId}`),
+  executeDemandTemplate: (templateId, month, year) => {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month);
+    if (year) params.append('year', year);
+    
+    return api.post(`/demand/templates/${templateId}/execute?${params.toString()}`, {}, {
+      responseType: 'blob',
+    });
+  },
+  getDemandExportHistory: () => api.get('/demand/export-history'),
+  checkMonthData: (month, year) => api.get(`/demand/check-month?month=${month}&year=${year}`),
 };
 
 // Utility functions

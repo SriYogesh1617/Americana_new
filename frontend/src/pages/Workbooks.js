@@ -9,8 +9,7 @@ import {
   Download, 
   Eye, 
   Calendar,
-  Database,
-  Layers
+  Database
 } from 'lucide-react';
 import { dataAPI, exportAPI, downloadFile } from '../services/api';
 import toast from 'react-hot-toast';

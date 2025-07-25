@@ -56,6 +56,53 @@ class File {
     );
     return result.rows;
   }
+
+  static async getTotalCount() {
+    const result = await query('SELECT COUNT(*) as count FROM uploaded_files');
+    return parseInt(result.rows[0].count);
+  }
+
+  static async getProcessingStats() {
+    const result = await query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
+        COUNT(CASE WHEN status = 'processing' THEN 1 END) as processing
+      FROM uploaded_files
+    `);
+    
+    const stats = result.rows[0];
+    const rate = stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0;
+    
+    return {
+      total: parseInt(stats.total),
+      completed: parseInt(stats.completed),
+      failed: parseInt(stats.failed),
+      processing: parseInt(stats.processing),
+      rate: parseFloat(rate)
+    };
+  }
+
+  static async getRecentUploads(limit = 10) {
+    const result = await query(
+      `SELECT * FROM uploaded_files 
+       ORDER BY upload_date DESC 
+       LIMIT $1`,
+      [limit]
+    );
+    return result.rows;
+  }
+
+  static async getMonthlyUploads(startDate, endDate) {
+    const result = await query(
+      `SELECT * FROM uploaded_files 
+       WHERE upload_date >= $1 AND upload_date <= $2 
+       ORDER BY upload_date DESC`,
+      [startDate, endDate]
+    );
+    return result.rows;
+  }
 }
 
 module.exports = File; 

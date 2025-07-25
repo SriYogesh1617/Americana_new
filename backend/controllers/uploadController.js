@@ -9,6 +9,7 @@ const File = require('../models/File');
 const Workbook = require('../models/Workbook');
 const Worksheet = require('../models/Worksheet');
 const SheetData = require('../models/SheetData');
+const { query } = require('../config/database');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -54,6 +55,11 @@ const determineCellType = (value) => {
   }
   
   if (typeof value === 'number') {
+    // Check if it's an Excel date serial number (between 40000 and 50000 for modern dates)
+    // Excel date serial numbers for dates from 2009 onwards are typically in this range
+    if (value >= 40000 && value <= 50000 && value === Math.floor(value)) {
+      return 'date';
+    }
     return 'number';
   }
   
@@ -67,7 +73,7 @@ const determineCellType = (value) => {
       return 'formula';
     }
     
-    // Check if it's a date
+    // Check if it's a date string
     const dateValue = new Date(value);
     if (!isNaN(dateValue.getTime()) && value.match(/\d{1,4}[-/]\d{1,2}[-/]\d{1,4}/)) {
       return 'date';
@@ -131,8 +137,21 @@ const processExcelFile = async (filePath, fileRecord) => {
           const cell = worksheet[cellAddress];
           
           if (cell) {
-            const cellValue = cell.v;
+            let cellValue = cell.v;
             const cellType = determineCellType(cellValue);
+            
+            // Convert Excel date serial numbers to readable date format
+            if (cellType === 'date' && typeof cellValue === 'number') {
+              // Excel date serial numbers start from January 1, 1900
+              // Convert to JavaScript date
+              const excelDate = new Date((cellValue - 25569) * 86400 * 1000);
+              cellValue = excelDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short'
+              });
+              console.log(`Converted Excel date ${cell.v} to ${cellValue}`);
+            }
+            
             const columnName = row === 0 ? String(cellValue) : `Column_${col}`;
 
             cellDataBatch.push({
@@ -165,11 +184,74 @@ const processExcelFile = async (filePath, fileRecord) => {
       total_columns: maxColumns
     });
 
+    // Automatically create demand template for this upload
+    await createDemandTemplateForUpload(fileRecord, workbookRecord);
+
     return workbookRecord;
 
   } catch (error) {
     console.error('Error processing Excel file:', error);
     throw error;
+  }
+};
+
+// Automatically create demand template for uploaded data
+const createDemandTemplateForUpload = async (fileRecord, workbookRecord) => {
+  try {
+    // Extract month and year from filename or use current date
+    const filename = fileRecord.original_name;
+    let month = null;
+    let year = null;
+    
+    // Try to extract date from filename (e.g., "OneDrive_2025-07-17.zip")
+    const dateMatch = filename.match(/(\d{4})-(\d{2})/);
+    if (dateMatch) {
+      year = parseInt(dateMatch[1]);
+      month = dateMatch[2];
+    } else {
+      // Use current date if no date found in filename
+      const now = new Date();
+      year = now.getFullYear();
+      month = String(now.getMonth() + 1).padStart(2, '0');
+    }
+
+    // Create demand template name
+    const templateName = `Demand_Template_${year}_${month}`;
+    
+    // Get all workbooks from this upload
+    const workbooksResult = await query(
+      'SELECT * FROM workbooks WHERE file_id = $1',
+      [fileRecord.id]
+    );
+    
+    const sourceWorkbooks = workbooksResult.rows.map(wb => ({
+      workbookId: wb.id,
+      workbookName: wb.workbook_name,
+      sheetCount: wb.sheet_count
+    }));
+
+    // Create demand template
+    const templateResult = await query(
+      `INSERT INTO demand_templates 
+       (template_name, source_workbooks, lookup_configs, calculations, output_format, upload_month, upload_year) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [
+        templateName,
+        JSON.stringify(sourceWorkbooks),
+        JSON.stringify([]), // Empty lookup configs for now
+        JSON.stringify([]), // Empty calculations for now
+        'xlsm',
+        month,
+        year
+      ]
+    );
+
+    console.log(`Created demand template: ${templateName} for upload: ${fileRecord.original_name}`);
+    return templateResult.rows[0];
+
+  } catch (error) {
+    console.error('Error creating demand template for upload:', error);
+    // Don't throw error - we don't want to fail the upload if template creation fails
   }
 };
 
@@ -182,11 +264,22 @@ const processZipFile = async (filePath, fileRecord) => {
 
     for (const entry of entries) {
       if (!entry.isDirectory && entry.entryName.match(/\.(xlsx|xlsm|xls)$/i)) {
+        console.log('Processing ZIP entry:', entry.entryName);
+        
         // Extract Excel file to temporary location
         const tempDir = path.join(__dirname, '../temp');
         await fs.mkdir(tempDir, { recursive: true });
         
-        const tempFilePath = path.join(tempDir, entry.entryName);
+        // Handle nested directory structure in ZIP
+        const entryPath = entry.entryName;
+        const tempFilePath = path.join(tempDir, path.basename(entryPath));
+        
+        console.log('Extracting to:', tempFilePath);
+        
+        // Ensure the directory exists
+        const tempFileDir = path.dirname(tempFilePath);
+        await fs.mkdir(tempFileDir, { recursive: true });
+        
         await fs.writeFile(tempFilePath, entry.getData());
 
         // Process the extracted Excel file
@@ -210,12 +303,21 @@ const processZipFile = async (filePath, fileRecord) => {
 const uploadFile = async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
+      console.error('Upload error:', err);
       return res.status(400).json({ error: err.message });
     }
 
     if (!req.file) {
+      console.error('No file in request');
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    console.log('File received:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    });
 
     try {
       // Create file record

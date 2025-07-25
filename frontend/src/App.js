@@ -8,6 +8,9 @@ import Upload from './pages/Upload';
 import Workbooks from './pages/Workbooks';
 import WorkbookDetail from './pages/WorkbookDetail';
 import WorksheetDetail from './pages/WorksheetDetail';
+import DatabasePage from './pages/Database';
+import MonthlyView from './pages/MonthlyView';
+import DemandTemplate from './pages/DemandTemplate';
 
 const AppContainer = styled.div`
   display: flex;
@@ -40,6 +43,9 @@ function App() {
             <Route path="/workbooks" element={<Workbooks />} />
             <Route path="/workbooks/:workbookId" element={<WorkbookDetail />} />
             <Route path="/worksheets/:worksheetId" element={<WorksheetDetail />} />
+            <Route path="/database" element={<DatabasePage />} />
+            <Route path="/monthly" element={<MonthlyView />} />
+            <Route path="/demand" element={<DemandTemplate />} />
           </Routes>
         </ContentArea>
       </MainContent>

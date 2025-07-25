@@ -95,8 +95,41 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Table for demand templates
+CREATE TABLE IF NOT EXISTS demand_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    template_name VARCHAR(255) NOT NULL,
+    source_workbooks JSONB, -- Array of workbook configurations
+    lookup_configs JSONB, -- Array of lookup configurations
+    calculations JSONB, -- Array of calculation formulas
+    output_format VARCHAR(10) DEFAULT 'xlsm',
+    upload_month VARCHAR(2), -- Month from upload (01-12)
+    upload_year INTEGER, -- Year from upload
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table for demand export jobs
+CREATE TABLE IF NOT EXISTS demand_export_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    template_id UUID REFERENCES demand_templates(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'pending',
+    file_path TEXT,
+    month VARCHAR(10),
+    year INTEGER,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+-- Indexes for demand templates
+CREATE INDEX IF NOT EXISTS idx_demand_templates_name ON demand_templates(template_name);
+CREATE INDEX IF NOT EXISTS idx_demand_export_jobs_template_id ON demand_export_jobs(template_id);
+CREATE INDEX IF NOT EXISTS idx_demand_export_jobs_status ON demand_export_jobs(status);
+
 -- Triggers to automatically update the updated_at column
 CREATE TRIGGER update_uploaded_files_updated_at BEFORE UPDATE ON uploaded_files FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_workbooks_updated_at BEFORE UPDATE ON workbooks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_worksheets_updated_at BEFORE UPDATE ON worksheets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_macro_calculations_updated_at BEFORE UPDATE ON macro_calculations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 
+CREATE TRIGGER update_macro_calculations_updated_at BEFORE UPDATE ON macro_calculations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_demand_templates_updated_at BEFORE UPDATE ON demand_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 

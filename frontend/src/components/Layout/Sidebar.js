@@ -7,7 +7,9 @@ import {
   FileSpreadsheet, 
   BarChart3, 
   Settings,
-  Database
+  Database,
+  Calendar,
+  Download
 } from 'lucide-react';
 
 const SidebarContainer = styled.aside`
@@ -143,6 +145,22 @@ const Sidebar = () => {
           >
             <Database size={18} />
             <NavText>Database</NavText>
+          </NavItem>
+          
+          <NavItem 
+            to="/monthly" 
+            $isActive={isActive('/monthly')}
+          >
+            <Calendar size={18} />
+            <NavText>Monthly View</NavText>
+          </NavItem>
+          
+          <NavItem 
+            to="/demand" 
+            $isActive={isActive('/demand')}
+          >
+            <Download size={18} />
+            <NavText>Demand Templates</NavText>
           </NavItem>
         </NavSection>
         

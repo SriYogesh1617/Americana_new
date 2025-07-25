@@ -9,10 +9,7 @@ import {
   Download,
   Search,
   Filter,
-  RefreshCw,
-  MoreVertical,
-  Eye,
-  Edit
+  RefreshCw
 } from 'lucide-react';
 import { dataAPI, exportAPI, downloadFile } from '../services/api';
 import toast from 'react-hot-toast';
@@ -145,67 +142,7 @@ const DataContainer = styled.div`
   position: relative;
 `;
 
-const TableHeader = styled.div`
-  display: flex;
-  background: #f9fafb;
-  border-bottom: 2px solid #e5e7eb;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-`;
 
-const RowIndexHeader = styled.div`
-  width: 60px;
-  padding: 0.75rem 0.5rem;
-  border-right: 1px solid #e5e7eb;
-  font-weight: 600;
-  text-align: center;
-  background: #f3f4f6;
-  color: #6b7280;
-  font-size: 0.875rem;
-`;
-
-const ColumnHeader = styled.div`
-  min-width: 120px;
-  width: 120px;
-  padding: 0.75rem 0.5rem;
-  border-right: 1px solid #e5e7eb;
-  font-weight: 600;
-  background: #f9fafb;
-  color: #374151;
-  font-size: 0.875rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const Cell = styled.div`
-  padding: 0.5rem;
-  border-right: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
-  font-size: 0.875rem;
-  color: #374151;
-  background: ${props => props.isHeader ? '#f9fafb' : 'white'};
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  
-  &:hover {
-    background: #f0f9ff;
-  }
-`;
-
-const RowIndexCell = styled.div`
-  width: 60px;
-  padding: 0.5rem;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 1px solid #f3f4f6;
-  background: #f9fafb;
-  color: #6b7280;
-  font-size: 0.875rem;
-  text-align: center;
-  font-weight: 500;
-`;
 
 const LoadingState = styled.div`
   display: flex;

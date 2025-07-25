@@ -7,7 +7,10 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
+
+// Trust proxy for rate limiting
+app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet());
@@ -19,7 +22,13 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  keyGenerator: (req) => {
+    // Use IP address for rate limiting
+    return req.ip || req.connection.remoteAddress;
+  }
 });
 app.use(limiter);
 
@@ -33,6 +42,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/data', require('./routes/dataRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
+app.use('/api/demand', require('./routes/demandRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

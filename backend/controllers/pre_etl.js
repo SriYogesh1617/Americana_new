@@ -9,19 +9,40 @@ const path = require('path');
 // === Configuration ===
 const ZIP_PATH = process.env.ZIP_PATH || path.join(__dirname, 'Input Files.zip');
 
+// === Validation 1 | All files are available in folder ===
+
 // === Folder-to-Expected-Files Mapping ===
 const FOLDER_STRUCTURE_MAPPING = {
   'Input Files': [
-    'Factory_Line_Master.xlsx',
+    'Factory_line_master.xlsx',
     'Demand_country_master.xlsx',
-    'Base_scenario_configuration.xlsx'
+    'Base_scenario_configuration.xlsx',
+    'Scenario_builder_template.xlsx'
   ],
   'Input Files/SKU Master': [
     'Item_master_NFC.xlsx',
     'Item_master_KFC.xlsx',
     'Item_master_GFC.xlsx'
   ],
-  // ... (rest of your mapping) ...
+  'Input Files/SKU-Line Mapping': [
+    'Capacity.xlsx'
+  ],
+  'Input Files/Bill of Materials': [
+    'GFC_BOM.xlsx',
+    'KFC_BOM.xlsx',
+    'NF1_BOM.xlsx',
+    'NF2_BOM.xlsx',
+    'Chicken_trimming_recipe.xlsx'
+  ],
+  'Input Files/Cost Data': [
+    'Factory_routing.xlsx',
+    'Labor_electricity_cost_per_factory.xlsx',
+    'Labor_cost_details_by_factory.xlsx',
+    'Landed_raw_material_cost.xlsx',
+    'Customs.xlsx',
+    'RM_transfer_costs.xlsx',
+    'Freight_storage_costs.xlsx'
+  ],
   'Input Files/Demand and OS': [
     'Demand.xlsx',
     'GFC_OS.xlsx',
@@ -30,9 +51,10 @@ const FOLDER_STRUCTURE_MAPPING = {
   ]
 };
 
-// === Core Functions ===
+// === Analyze ZIP structure recursively ===
 async function analyzeZipStructure(zipEntries) {
   const structure = { folders: {}, files: [], totalFolders: 0, totalFiles: 0 };
+
   zipEntries.forEach(entry => {
     const entryPath = entry.entryName.replace(/\\/g, '/');
     if (entry.isDirectory) {
@@ -45,19 +67,24 @@ async function analyzeZipStructure(zipEntries) {
       structure.totalFiles++;
       const parts = entryPath.split('/');
       const fileName = parts.pop();
-      const folderPath = parts.join('/') || '';
+      const folderPath = parts.join('/');
       if (folderPath) {
-        structure.folders[folderPath] = structure.folders[folderPath] || { name: folderPath, files: [] };
+        if (!structure.folders[folderPath]) {
+          structure.folders[folderPath] = { name: folderPath, files: [] };
+          structure.totalFolders++;
+        }
         structure.folders[folderPath].files.push(fileName);
       } else {
         structure.files.push(fileName);
       }
     }
   });
+
   console.log(`Found ${structure.totalFolders} folders and ${structure.totalFiles} files in ZIP`);
   return structure;
 }
 
+// === Perform validation with .xlsx / .xls flexibility ===
 async function performValidation(zipStructure) {
   const results = { missingFiles: [], extraFiles: [], unknownFolders: [] };
 
@@ -67,28 +94,44 @@ async function performValidation(zipStructure) {
     const actualFiles = actualFolder ? zipStructure.folders[actualFolder].files : [];
 
     if (!actualFolder) {
-      // Entire folder missing
-      expectedFiles.forEach(f => results.missingFiles.push({ folder: expectedFolder, file: f }));
+      // whole folder missing
+      expectedFiles.forEach(f => {
+        results.missingFiles.push({ folder: expectedFolder, file: f });
+      });
       return;
     }
 
-    // Missing
-    expectedFiles.forEach(f => {
-      if (!actualFiles.includes(f)) {
-        results.missingFiles.push({ folder: expectedFolder, file: f });
+    // Check each expected file (allow .xlsx or .xls)
+    expectedFiles.forEach(expectedFile => {
+      const base = path.parse(expectedFile).name;
+      const hasXlsx = actualFiles.includes(base + '.xlsx');
+      const hasXls  = actualFiles.includes(base + '.xls');
+      if (!hasXlsx && !hasXls) {
+        const msg = `${base}.{xlsx|xls} unavailable in ${expectedFolder}`;
+        console.log(`  ❌ ${msg}`);
+        results.missingFiles.push({ folder: expectedFolder, file: expectedFile, message: msg });
+      } else {
+        const found = hasXlsx ? '.xlsx' : '.xls';
+        console.log(`  ✅ Found: ${base}${found}`);
       }
     });
-    // Extra
-    actualFiles.forEach(f => {
-      if (!expectedFiles.includes(f)) {
-        results.extraFiles.push({ folder: expectedFolder, file: f });
+
+    // Extra files in folder
+    actualFiles.forEach(actualFile => {
+      const base = path.parse(actualFile).name;
+      if (!expectedFiles.some(f => path.parse(f).name === base)) {
+        const msg = `Extra file found: ${actualFile} in ${expectedFolder}`;
+        console.log(`  ⚠️  ${msg}`);
+        results.extraFiles.push({ folder: expectedFolder, file: actualFile, message: msg });
       }
     });
   });
 
-  // Any folders in ZIP not in mapping
+  // Detect any folders not in the mapping
   Object.keys(zipStructure.folders).forEach(zf => {
-    if (!Object.keys(FOLDER_STRUCTURE_MAPPING).some(ef => zf === ef || zf.endsWith(`/${ef}`))) {
+    const known = Object.keys(FOLDER_STRUCTURE_MAPPING)
+      .some(ef => zf === ef || zf.endsWith(`/${ef}`));
+    if (!known) {
       results.unknownFolders.push({ folder: zf, files: zipStructure.folders[zf].files });
     }
   });
@@ -96,13 +139,14 @@ async function performValidation(zipStructure) {
   return results;
 }
 
+// === Generate summary ===
 function generateValidationSummary(results, zipStructure) {
   return {
     totalFoldersInZip: zipStructure.totalFolders,
     totalFilesInZip: zipStructure.totalFiles,
     expectedFolders: Object.keys(FOLDER_STRUCTURE_MAPPING).length,
     foldersFound: Object.keys(FOLDER_STRUCTURE_MAPPING).length - 
-                  results.missingFiles.reduce((set, m) => set.add(m.folder), new Set()).size,
+                  new Set(results.missingFiles.map(m => m.folder)).size,
     missingCount: results.missingFiles.length,
     extraCount: results.extraFiles.length,
     unknownFolders: results.unknownFolders.length,
@@ -111,7 +155,7 @@ function generateValidationSummary(results, zipStructure) {
   };
 }
 
-// === Main Execution ===
+// === Main ===
 async function main() {
   try {
     console.log('\n=== ZIP Validation Started ===');
@@ -120,33 +164,42 @@ async function main() {
     }
     const zip = new AdmZip(ZIP_PATH);
     const entries = zip.getEntries();
+
     const structure = await analyzeZipStructure(entries);
+    console.log('\n🔍 Validating contents…');
     const validation = await performValidation(structure);
     const summary = generateValidationSummary(validation, structure);
 
     console.log('\n=== Validation Summary ===');
     console.log(JSON.stringify(summary, null, 2));
-    console.log('\n=== Missing Files ===');
-    validation.missingFiles.forEach(m => 
-      console.log(`${m.file} unavailable in ${m.folder}`)
-    );
-    console.log('\n=== Extra Files ===');
-    validation.extraFiles.forEach(e => 
-      console.log(`Extra file: ${e.file} in ${e.folder}`)
-    );
-    console.log('\n=== Unknown Folders ===');
-    validation.unknownFolders.forEach(u => 
-      console.log(`Unknown folder: ${u.folder}`)
-    );
+
+    if (validation.missingFiles.length) {
+      console.log('\n=== Missing Files ===');
+      validation.missingFiles.forEach(m =>
+        console.log(`${m.message}`)
+      );
+    }
+    if (validation.extraFiles.length) {
+      console.log('\n=== Extra Files ===');
+      validation.extraFiles.forEach(e =>
+        console.log(`${e.message}`)
+      );
+    }
+    if (validation.unknownFolders.length) {
+      console.log('\n=== Unknown Folders ===');
+      validation.unknownFolders.forEach(u =>
+        console.log(`Unknown folder: ${u.folder}`)
+      );
+    }
 
     process.exit(summary.passed ? 0 : 1);
+
   } catch (err) {
     console.error('\n❌ Validation failed:', err.message);
     process.exit(2);
   }
 }
 
-// Invoke if run directly
 if (require.main === module) {
   main();
 }

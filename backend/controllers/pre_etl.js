@@ -5,6 +5,7 @@
 const AdmZip = require('adm-zip');
 const fs = require('fs');
 const path = require('path');
+const xlsx = require('xlsx');
 
 // === Configuration ===
 const ZIP_PATH = process.env.ZIP_PATH || path.join(__dirname, 'Input Files.zip');
@@ -155,6 +156,31 @@ function generateValidationSummary(results, zipStructure) {
   };
 }
 
+
+// === Test Case 2 | Open & Read Each File ===
+async function testOpenFiles(zip, zipStructure, validationResults) {
+  // initialize open‑failure array
+  validationResults.openFailures = [];
+
+  console.log('\n🔍 Testing file open/read…');
+  for (const [folderPath, folderObj] of Object.entries(zipStructure.folders)) {
+    for (const fileName of folderObj.files) {
+      const entryName = `${folderPath}/${fileName}`;
+      try {
+        // attempt to parse the buffer as Excel
+        const buffer = zip.readFile(entryName);
+        xlsx.read(buffer, { type: 'buffer' });
+        console.log(`  ✅ ${fileName} opened successfully in ${folderPath}`);
+      } catch (err) {
+        const msg = `Unable to open ${fileName} in ${folderPath}: ${err.message}`;
+        console.log(`  ❌ ${msg}`);
+        validationResults.openFailures.push({ folder: folderPath, file: fileName, message: msg });
+      }
+    }
+  }
+}
+
+
 // === Main ===
 async function main() {
   try {
@@ -168,6 +194,8 @@ async function main() {
     const structure = await analyzeZipStructure(entries);
     console.log('\n🔍 Validating contents…');
     const validation = await performValidation(structure);
+    // Test Case 2: open & read each file
+    await testOpenFiles(zip, structure, validation);
     const summary = generateValidationSummary(validation, structure);
 
     console.log('\n=== Validation Summary ===');
@@ -191,6 +219,13 @@ async function main() {
         console.log(`Unknown folder: ${u.folder}`)
       );
     }
+
+        // ===== File‑Open Validation Summary =====
+    console.log('\n=== File‑Open Validation ===');
+    console.log(`Total open failures: ${validation.openFailures.length}`);
+    validation.openFailures.forEach(f =>
+      console.log(`  ❌ ${f.message}`)
+    );
 
     process.exit(summary.passed ? 0 : 1);
 

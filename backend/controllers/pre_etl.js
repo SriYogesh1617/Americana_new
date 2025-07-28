@@ -181,6 +181,210 @@ async function testOpenFiles(zip, zipStructure, validationResults) {
 }
 
 
+
+// =======TO BE DELETED LATER============
+// // === Helper: Extract & Save Dynamic Format Schema (Trim Trailing Blanks) ===
+// const FORMAT_SCHEMA_OUTPUT = path.join(__dirname, 'formatSchema.json');
+
+// function extractFormatSchema(zip, zipStructure) {
+//   const schema = {};
+
+//   for (const [folderPath, folderObj] of Object.entries(zipStructure.folders)) {
+//     for (const fileName of folderObj.files) {
+//       const entryName = `${folderPath}/${fileName}`;
+//       try {
+//         const buffer   = zip.readFile(entryName);
+//         const workbook = xlsx.read(buffer, { type: 'buffer' });
+//         const base     = path.parse(fileName).name;
+//         schema[base]   = { sheets: {} };
+
+//         workbook.SheetNames.forEach(sheetName => {
+//           const sheet = workbook.Sheets[sheetName];
+//           const range = xlsx.utils.decode_range(sheet['!ref'] || '');
+
+//           let bestRow        = null;
+//           let maxNonEmpty    = 0;
+//           let bestHeaders    = [];
+
+//           // Find the row with the most non‑empty cells
+//           for (let R = range.s.r; R <= range.e.r; ++R) {
+//             const headers     = [];
+//             let nonEmptyCount = 0;
+
+//             for (let C = range.s.c; C <= range.e.c; ++C) {
+//               const cellRef = xlsx.utils.encode_cell({ r: R, c: C });
+//               const cell    = sheet[cellRef];
+//               const val     = cell && cell.v != null ? String(cell.v).trim() : '';
+//               headers.push(val);
+//               if (val !== '') nonEmptyCount++;
+//             }
+
+//             if (nonEmptyCount > maxNonEmpty) {
+//               maxNonEmpty = nonEmptyCount;
+//               bestRow     = R + 1;      // convert to 1‑based
+//               bestHeaders = headers;
+//             }
+//           }
+
+//           // Trim off any trailing empty strings
+//           let lastIdx = bestHeaders.length - 1;
+//           while (lastIdx >= 0 && bestHeaders[lastIdx] === '') {
+//             lastIdx--;
+//           }
+//           const trimmedHeaders = bestHeaders.slice(0, lastIdx + 1);
+
+//           schema[base].sheets[sheetName] = {
+//             sheetName,
+//             headerRow: bestRow,
+//             headers: trimmedHeaders,
+//             columnCount: trimmedHeaders.length
+//           };
+//         });
+
+//       } catch (err) {
+//         console.error(`Error reading ${entryName}: ${err.message}`);
+//       }
+//     }
+//   }
+
+//   // Persist to JSON
+//   try {
+//     fs.writeFileSync(
+//       FORMAT_SCHEMA_OUTPUT,
+//       JSON.stringify(schema, null, 2),
+//       'utf8'
+//     );
+//     console.log(`\n✅ Format schema saved to ${FORMAT_SCHEMA_OUTPUT}`);
+//   } catch (err) {
+//     console.error(`❌ Failed to write schema file: ${err.message}`);
+//   }
+
+//   return schema;
+// }
+
+
+
+const formatSchema = require('./formatSchema.json');
+
+async function testFormatAgainstSchema(zip, zipStructure, validationResults) {
+  validationResults.formatFailures = [];
+
+  console.log('\n🔍 Checking file format as per schema…');
+
+  for (const [folderPath, folderObj] of Object.entries(zipStructure.folders)) {
+    for (const fileName of folderObj.files) {
+      const entryName = `${folderPath}/${fileName}`;
+      const baseName = path.parse(fileName).name;
+
+      if (!formatSchema[baseName]) {
+        console.log(`  ⚠️  No schema found for ${fileName} (skipped)`);
+        continue;
+      }
+
+      try {
+        const buffer = zip.readFile(entryName);
+        const workbook = xlsx.read(buffer, { type: 'buffer' });
+
+        const expectedSheets = formatSchema[baseName].sheets;
+
+        for (const [sheetName, schema] of Object.entries(expectedSheets)) {
+          let sheet = workbook.Sheets[sheetName];
+
+          // // Log what sheet names we have in workbook
+          // console.log(`Workbook sheets found: ${workbook.SheetNames.join(', ')}`);
+          // console.log(`Looking for sheet "${sheetName}" in file "${fileName}"`);
+
+          if (!sheet) {
+              const nonMetaSheets = workbook.SheetNames.filter(
+                  n => !n.toLowerCase().includes('meta')
+              );
+              if (nonMetaSheets.length > 0) {
+                  const fallbackSheetName = nonMetaSheets[0];
+                  sheet = workbook.Sheets[fallbackSheetName];
+                  console.log(
+                      `  ⚠️ Sheet "${sheetName}" not found in "${fileName}". Using "${fallbackSheetName}" instead.`
+                  );
+              }
+          }
+
+
+          if (!sheet) {
+            const msg = `Sheet "${sheetName}" missing in file "${fileName}" (path: ${folderPath})`;
+            console.log(`  ❌ ${msg}`);
+            validationResults.formatFailures.push({ folder: folderPath, file: fileName, message: msg });
+            continue;
+          }
+
+          // Handle merged cells - fill empty merged cells with top-left value
+          // if (sheet['!merges']) {
+          //   sheet['!merges'].forEach(merge => {
+          //     const topLeftRef = xlsx.utils.encode_cell({ r: merge.s.r, c: merge.s.c });
+          //     const topLeftCell = sheet[topLeftRef];
+          //     if (topLeftCell && topLeftCell.v !== undefined) {
+          //       for (let R = merge.s.r; R <= merge.e.r; R++) {
+          //         for (let C = merge.s.c; C <= merge.e.c; C++) {
+          //           const cellRef = xlsx.utils.encode_cell({ r: R, c: C });
+          //           if (!sheet[cellRef]) sheet[cellRef] = { v: topLeftCell.v };
+          //         }
+          //       }
+          //     }
+          //   });
+          // }
+
+          if (sheet['!merges']) {
+            sheet['!merges'].forEach(merge => {
+              const topLeft = xlsx.utils.encode_cell({ r: merge.s.r, c: merge.s.c });
+              const value = sheet[topLeft] && sheet[topLeft].v;
+              for (let R = merge.s.r; R <= merge.e.r; ++R) {
+                for (let C = merge.s.c; C <= merge.e.c; ++C) {
+                  const ref = xlsx.utils.encode_cell({ r: R, c: C });
+                  if (!sheet[ref]) sheet[ref] = { v: value };
+                }
+              }
+            });
+          }
+
+          // Determine actual headers
+          const range = xlsx.utils.decode_range(sheet['!ref']);
+          const headerRowIdx = schema.headerRow - 1;
+          const headers = [];
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cellRef = xlsx.utils.encode_cell({ r: headerRowIdx, c: C });
+            const cell = sheet[cellRef];
+            headers.push(cell ? String(cell.v).trim() : '');
+          }
+
+          // Trim trailing blanks
+          while (headers.length && headers[headers.length - 1] === '') {
+            headers.pop();
+          }
+
+          // Check header count
+          if (headers.length !== schema.columnCount) {
+            const msg = `Column count mismatch in "${sheetName}" of "${fileName}". Expected ${schema.columnCount}, found ${headers.length}`;
+            console.log(`  ❌ ${msg}`);
+            validationResults.formatFailures.push({ folder: folderPath, file: fileName, message: msg });
+          }
+
+          // Check each header
+          schema.headers.forEach((expectedHeader, idx) => {
+            if ((headers[idx] || '') !== expectedHeader) {
+              const msg = `Header mismatch at column ${idx + 1} in "${sheetName}" of "${fileName}". Expected "${expectedHeader}", found "${headers[idx] || ''}"`;
+              console.log(`  ❌ ${msg}`);
+              validationResults.formatFailures.push({ folder: folderPath, file: fileName, message: msg });
+            }
+          });
+        }
+      } catch (err) {
+        const msg = `Unable to parse "${fileName}" at ${folderPath}: ${err.message}`;
+        console.log(`  ❌ ${msg}`);
+        validationResults.formatFailures.push({ folder: folderPath, file: fileName, message: msg });
+      }
+    }
+  }
+}
+
+
 // === Main ===
 async function main() {
   try {
@@ -194,8 +398,16 @@ async function main() {
     const structure = await analyzeZipStructure(entries);
     console.log('\n🔍 Validating contents…');
     const validation = await performValidation(structure);
+    
     // Test Case 2: open & read each file
     await testOpenFiles(zip, structure, validation);
+
+    // // Helper Test Case - Prep: extract & save schema
+    // const formatSchema = extractFormatSchema(zip, structure);
+
+    // Test Case 3: format validation
+    await testFormatAgainstSchema(zip, structure, validation);
+
     const summary = generateValidationSummary(validation, structure);
 
     console.log('\n=== Validation Summary ===');

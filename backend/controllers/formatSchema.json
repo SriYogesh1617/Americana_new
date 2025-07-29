@@ -288,7 +288,9 @@
           "Default WH"
         ],
         "columnCount": 6,
-        "countryValueColumns": ["Country"]
+        "countryValueColumns": ["Country"],
+        "warehouseValueColumns": ["Safety Stock WH"],
+        "warehouseExcludeValues": ["NA-MTO"]
       }
     }
   },
@@ -747,7 +749,8 @@
           "Storage Cost/Pallet (USD)",
           "Storage Cost/Carton"
         ],
-        "columnCount": 8
+        "columnCount": 8,
+        "warehouseValueColumns": ["WH Code"]
       },
       "II. Template - FreightRawData": {
         "sheetName": "II. Template - FreightRawData",
@@ -785,7 +788,8 @@
           "WHCountry"
         ],
         "columnCount": 2,
-        "countryValueColumns": ["WHCountry"]
+        "countryValueColumns": ["WHCountry"],
+        "warehouseValueColumns": ["WHCode"]
       }      
     }
   },

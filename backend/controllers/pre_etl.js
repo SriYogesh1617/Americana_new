@@ -650,6 +650,131 @@ async function testCountryConsistency(zip, zipStructure, validationResults) {
 }
 
 
+// === Test Case 6 | Warehouse names are consistent across all input files ===
+async function testWarehouseConsistency(zip, zipStructure, validationResults) {
+  console.log('\n🔍 Checking warehouse name consistency across all relevant files…');
+  validationResults.warehouseMismatches = [];
+
+  // --- STEP 1: Identify relevant sheets from schema ---
+  const warehouseFiles = [];
+  for (const [fileBase, fileSchema] of Object.entries(formatSchema)) {
+    for (const [sheetName, sheetSchema] of Object.entries(fileSchema.sheets)) {
+      if (sheetSchema.warehouseValueColumns && sheetSchema.warehouseValueColumns.length > 0) {
+        warehouseFiles.push({
+          fileBase,
+          sheetName,
+          headerRow: sheetSchema.headerRow,
+          headers: sheetSchema.headers,
+          warehouseValueColumns: sheetSchema.warehouseValueColumns,
+          warehouseColumnIndices: sheetSchema.warehouseValueColumns.map(colName =>
+            sheetSchema.headers.findIndex(h => h === colName)
+          ).filter(idx => idx >= 0),
+          warehouseExcludeValues: sheetSchema.warehouseExcludeValues || []
+        });
+      }
+    }
+  }
+
+  if (!warehouseFiles.length) {
+    console.log('  ⚠️  No warehouse columns found in any schema. Skipping test.');
+    return;
+  }
+
+  const allWarehousesSet = new Set();
+  const warehousesByFile = {};
+
+  // --- STEP 2: Extract warehouses from each sheet ---
+  for (const fileDef of warehouseFiles) {
+    const { fileBase, sheetName, headerRow } = fileDef;
+
+    // Find actual file path in zip
+    const folderPath = Object.keys(zipStructure.folders)
+      .find(fp => zipStructure.folders[fp].files.some(f => f.startsWith(fileBase)));
+    if (!folderPath) continue;
+    const fileName = zipStructure.folders[folderPath].files.find(f => f.startsWith(fileBase));
+    const entryName = `${folderPath}/${fileName}`;
+
+    try {
+      const buffer = zip.readFile(entryName);
+      const workbook = xlsx.read(buffer, { type: 'buffer' });
+      let sheet = workbook.Sheets[sheetName];
+      
+      if (!sheet) {
+        const nonMetaSheets = workbook.SheetNames.filter(
+          n => !n.toLowerCase().includes('meta')
+        );
+        if (nonMetaSheets.length > 0) {
+          const fallbackSheetName = nonMetaSheets[0];
+          sheet = workbook.Sheets[fallbackSheetName];
+          console.log(
+            `  ⚠️ Sheet "${sheetName}" not found in "${fileName}". Using "${fallbackSheetName}" instead.`
+          );
+        }
+      }
+
+      if (!sheet) {
+        console.log(`  ❌ Sheet ${sheetName} missing in ${fileName}`);
+        continue;
+      }
+
+      const range = xlsx.utils.decode_range(sheet['!ref']);
+      const warehouses = new Set();
+
+      // Read values from each identified warehouse column
+      fileDef.warehouseColumnIndices.forEach(colIdx => {
+        for (let R = headerRow; R <= range.e.r; R++) {
+          const cellRef = xlsx.utils.encode_cell({ r: R, c: colIdx });
+          const cell = sheet[cellRef];
+          if (cell && cell.v && String(cell.v)) {
+            const warehouseName = String(cell.v);
+            // Skip excluded values
+            if (!fileDef.warehouseExcludeValues.includes(warehouseName)) {
+              warehouses.add(warehouseName);
+            }
+          }
+        }
+      });
+
+      warehousesByFile[`${fileBase}:${sheetName}`] = warehouses;
+      warehouses.forEach(w => allWarehousesSet.add(w));
+
+    } catch (err) {
+      console.log(`  ❌ Unable to read ${fileName} for warehouses: ${err.message}`);
+    }
+  }
+
+  const allWarehouses = Array.from(allWarehousesSet);
+
+  // --- STEP 3: Build matrix ---
+  const matrix = allWarehouses.map(warehouse => {
+    const row = { Warehouse: warehouse };
+    for (const key of Object.keys(warehousesByFile)) {
+      row[key] = warehousesByFile[key].has(warehouse);
+      if (!warehousesByFile[key].has(warehouse)) {
+        validationResults.warehouseMismatches.push({
+          warehouse: warehouse,
+          fileSheet: key,
+          message: `Please check ${key} for missing warehouse "${warehouse}"`
+        });
+      }
+    }
+    return row;
+  });
+
+  // --- STEP 4: Display matrix with warehouses as rows and files as columns ---
+  console.log('\nWarehouse consistency matrix (Warehouses as rows):');
+  console.table(matrix);
+
+  // --- STEP 5: Messages for missing warehouses ---
+  if (validationResults.warehouseMismatches.length) {
+    console.log('\n=== Warehouse Mismatches ===');
+    validationResults.warehouseMismatches.forEach(m => console.log(`  ❌ ${m.message}`));
+  } else {
+    console.log('  ✅ All warehouses present in all relevant sheets.');
+  }
+}
+
+
 // === Main ===
 async function main() {
   try {
@@ -678,6 +803,9 @@ async function main() {
 
     // Test Case 5: Country names are consistent across all input files
     await testCountryConsistency(zip, structure, validation);
+
+    // Test Case 6: Warehouse names are consistent across all input files
+    await testWarehouseConsistency(zip, structure, validation);
 
     const summary = generateValidationSummary(validation, structure);
 
@@ -716,6 +844,15 @@ async function main() {
       console.log(`Total country mismatches: ${validation.countryMismatches.length}`);
       validation.countryMismatches.forEach(c =>
         console.log(`  ❌ ${c.message}`)
+      );
+    }
+
+    // ===== Warehouse Consistency Validation Summary =====
+    if (validation.warehouseMismatches && validation.warehouseMismatches.length > 0) {
+      console.log('\n=== Warehouse Consistency Validation ===');
+      console.log(`Total warehouse mismatches: ${validation.warehouseMismatches.length}`);
+      validation.warehouseMismatches.forEach(w =>
+        console.log(`  ❌ ${w.message}`)
       );
     }
 

@@ -395,28 +395,25 @@ async function testFactoryConsistency(zip, zipStructure, validationResults) {
   const factoryFiles = [];
   for (const [fileBase, fileSchema] of Object.entries(formatSchema)) {
     for (const [sheetName, sheetSchema] of Object.entries(fileSchema.sheets)) {
-      if (sheetSchema.factoryHeaders) {
+      const isHeaderBased = sheetSchema.factoryHeaders && sheetSchema.factoryColumns;
+      const isValueBased = (sheetSchema.factoryValueColumns && sheetSchema.factoryValueColumns.length > 0)
+        || sheetSchema.headers.some(h => h.toLowerCase() === 'factory');
+
+      if (isHeaderBased || isValueBased) {
         factoryFiles.push({
           fileBase,
           sheetName,
           headerRow: sheetSchema.headerRow,
-          factoryHeaders: true,
           headers: sheetSchema.headers,
-          factoryColumns: sheetSchema.factoryColumns || [] // <-- Pass factory columns properly
+          factoryHeaders: !!sheetSchema.factoryHeaders,
+          factoryColumns: sheetSchema.factoryColumns || [],
+          factoryValueColumns: sheetSchema.factoryValueColumns || [],
+          factoryColumnIndex: sheetSchema.headers.findIndex(h => h.toLowerCase() === 'factory')
         });
-      } else {
-        const factoryIndex = sheetSchema.headers.findIndex(h => h.toLowerCase() === 'factory');
-        if (factoryIndex !== -1) {
-          factoryFiles.push({
-            fileBase,
-            sheetName,
-            headerRow: sheetSchema.headerRow,
-            factoryColumnIndex: factoryIndex
-          });
-        }
       }
     }
   }
+
 
   if (!factoryFiles.length) {
     console.log('  ⚠️  No Factory columns or headers found in any schema. Skipping test.');
@@ -450,15 +447,32 @@ async function testFactoryConsistency(zip, zipStructure, validationResults) {
       const factories = new Set();
 
       if (fileDef.factoryHeaders) {
-        // Use factory column headers directly from schema
+        // Case 1: Factory names are column headers
         (fileDef.factoryColumns || []).forEach(h => factories.add(h));
       } else {
-        // Read values from the "Factory" column
-        for (let R = headerRow; R <= range.e.r; R++) {
-          const cellRef = xlsx.utils.encode_cell({ r: R, c: fileDef.factoryColumnIndex });
-          const cell = sheet[cellRef];
-          if (cell && cell.v) factories.add(String(cell.v).trim());
+        // Case 2: Factory names are row values
+        let valueColumns = [];
+
+        // Add explicitly defined columns from schema
+        if (fileDef.factoryValueColumns && fileDef.factoryValueColumns.length > 0) {
+          valueColumns = fileDef.factoryValueColumns.map(colName =>
+            fileDef.headers.findIndex(h => h === colName)
+          ).filter(idx => idx >= 0);
         }
+
+        // If no explicit factoryValueColumns, fallback to "Factory" column index
+        if (valueColumns.length === 0 && fileDef.factoryColumnIndex !== null) {
+          valueColumns.push(fileDef.factoryColumnIndex);
+        }
+
+        // Read values from each identified factory column
+        valueColumns.forEach(colIdx => {
+          for (let R = headerRow; R <= range.e.r; R++) {
+            const cellRef = xlsx.utils.encode_cell({ r: R, c: colIdx });
+            const cell = sheet[cellRef];
+            if (cell && cell.v) factories.add(String(cell.v).trim());
+          }
+        });
       }
 
       factoriesByFile[`${fileBase}:${sheetName}`] = factories;
@@ -513,7 +527,6 @@ async function testFactoryConsistency(zip, zipStructure, validationResults) {
     console.log('  ✅ All factories present in all relevant sheets.');
   }
 }
-
 
 
 

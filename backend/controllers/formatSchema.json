@@ -152,7 +152,8 @@
           "Origin Factory",
           "Destination Country"
         ],
-        "columnCount": 5
+        "columnCount": 5,
+        "factoryValueColumns": ["Origin Factory"]
       },
       "Trimming Transfer": {
         "sheetName": "Trimming Transfer",
@@ -163,7 +164,8 @@
           "TSKUCode",
           "Allowed"
         ],
-        "columnCount": 4
+        "columnCount": 4,
+        "factoryValueColumns": ["OrigFact", "DestFact"]
       },
       "Exchange Rate": {
         "sheetName": "Exchange Rate",
@@ -467,7 +469,8 @@
           "Origin Factory",
           "Destination Country"
         ],
-        "columnCount": 5
+        "columnCount": 5,
+        "factoryValueColumns": ["Origin Factory"]
       },
       "Trimming Transfer": {
         "sheetName": "Trimming Transfer",
@@ -478,7 +481,8 @@
           "TSKUCode",
           "Allowed"
         ],
-        "columnCount": 4
+        "columnCount": 4,
+        "factoryValueColumns": ["OrigFact", "DestFact"]
       },
       "Import Restrictions": {
         "sheetName": "Import Restrictions",
@@ -618,7 +622,8 @@
           "UOM.1",
           "Qty.1"
         ],
-        "columnCount": 10
+        "columnCount": 10,
+        "factoryValueColumns": ["FactCode"]
       }
     }
   },
@@ -756,7 +761,8 @@
           "Truck Load (UoM)",
           "Truck Freight (USD)/Truckload"
         ],
-        "columnCount": 8
+        "columnCount": 8,
+        "factoryValueColumns": ["Origin"]
       },
       "Factory": {
         "sheetName": "Factory",
@@ -765,7 +771,8 @@
           "FactCode",
           "FactCountry"
         ],
-        "columnCount": 2
+        "columnCount": 2,
+        "factoryValueColumns": ["FactCode"]
       },
       "Warehouse": {
         "sheetName": "Warehouse",
@@ -852,7 +859,9 @@
           "Packaging Cost/Kg",
           "FrtRate/kg"
         ],
-        "columnCount": 7
+        "columnCount": 7,
+        "factoryValueColumns": ["OrigFact", "DestFact"]
+        
       }
     }
   },

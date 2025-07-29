@@ -53,6 +53,7 @@ const FOLDER_STRUCTURE_MAPPING = {
 };
 
 // === Analyze ZIP structure recursively ===
+// === Test Case 1 | Check file availability as per input file list  ===
 async function analyzeZipStructure(zipEntries) {
   const structure = { folders: {}, files: [], totalFolders: 0, totalFiles: 0 };
 
@@ -263,7 +264,7 @@ async function testOpenFiles(zip, zipStructure, validationResults) {
 // }
 
 
-
+// === Test Case 3 | Check if the given file formats are being followed ===
 const formatSchema = require('./formatSchema.json');
 
 async function testFormatAgainstSchema(zip, zipStructure, validationResults) {
@@ -385,6 +386,137 @@ async function testFormatAgainstSchema(zip, zipStructure, validationResults) {
 }
 
 
+// === Test Case 4 | #Factories and names of factories are same in all input files ===
+async function testFactoryConsistency(zip, zipStructure, validationResults) {
+  console.log('\n🔍 Checking unique factory names across all relevant files…');
+  validationResults.factoryMismatches = [];
+
+  // --- STEP 1: Identify relevant sheets from schema ---
+  const factoryFiles = [];
+  for (const [fileBase, fileSchema] of Object.entries(formatSchema)) {
+    for (const [sheetName, sheetSchema] of Object.entries(fileSchema.sheets)) {
+      if (sheetSchema.factoryHeaders) {
+        factoryFiles.push({
+          fileBase,
+          sheetName,
+          headerRow: sheetSchema.headerRow,
+          factoryHeaders: true,
+          headers: sheetSchema.headers,
+          factoryColumns: sheetSchema.factoryColumns || [] // <-- Pass factory columns properly
+        });
+      } else {
+        const factoryIndex = sheetSchema.headers.findIndex(h => h.toLowerCase() === 'factory');
+        if (factoryIndex !== -1) {
+          factoryFiles.push({
+            fileBase,
+            sheetName,
+            headerRow: sheetSchema.headerRow,
+            factoryColumnIndex: factoryIndex
+          });
+        }
+      }
+    }
+  }
+
+  if (!factoryFiles.length) {
+    console.log('  ⚠️  No Factory columns or headers found in any schema. Skipping test.');
+    return;
+  }
+
+  const allFactoriesSet = new Set();
+  const factoriesByFile = {};
+
+  // --- STEP 2: Extract factories from each sheet ---
+  for (const fileDef of factoryFiles) {
+    const { fileBase, sheetName, headerRow } = fileDef;
+
+    // Find actual file path in zip
+    const folderPath = Object.keys(zipStructure.folders)
+      .find(fp => zipStructure.folders[fp].files.some(f => f.startsWith(fileBase)));
+    if (!folderPath) continue;
+    const fileName = zipStructure.folders[folderPath].files.find(f => f.startsWith(fileBase));
+    const entryName = `${folderPath}/${fileName}`;
+
+    try {
+      const buffer = zip.readFile(entryName);
+      const workbook = xlsx.read(buffer, { type: 'buffer' });
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) {
+        console.log(`  ❌ Sheet ${sheetName} missing in ${fileName}`);
+        continue;
+      }
+
+      const range = xlsx.utils.decode_range(sheet['!ref']);
+      const factories = new Set();
+
+      if (fileDef.factoryHeaders) {
+        // Use factory column headers directly from schema
+        (fileDef.factoryColumns || []).forEach(h => factories.add(h));
+      } else {
+        // Read values from the "Factory" column
+        for (let R = headerRow; R <= range.e.r; R++) {
+          const cellRef = xlsx.utils.encode_cell({ r: R, c: fileDef.factoryColumnIndex });
+          const cell = sheet[cellRef];
+          if (cell && cell.v) factories.add(String(cell.v).trim());
+        }
+      }
+
+      factoriesByFile[`${fileBase}:${sheetName}`] = factories;
+      factories.forEach(f => allFactoriesSet.add(f));
+
+    } catch (err) {
+      console.log(`  ❌ Unable to read ${fileName} for factories: ${err.message}`);
+    }
+  }
+
+  const allFactories = Array.from(allFactoriesSet);
+
+  // --- STEP 3: Build matrix ---
+  const matrix = allFactories.map(f => {
+    const row = { Factory: f };
+    for (const key of Object.keys(factoriesByFile)) {
+      row[key] = factoriesByFile[key].has(f);
+      if (!factoriesByFile[key].has(f)) {
+        validationResults.factoryMismatches.push({
+          factory: f,
+          fileSheet: key,
+          message: `Please check ${key} for missing factory "${f}"`
+        });
+      }
+    }
+    return row;
+  });
+
+  // --- STEP 4: Transpose matrix and print ---
+  function transposeMatrix(matrix, headers) {
+    const transposed = [];
+    headers.slice(1).forEach(sheet => {
+      const row = { Sheet: sheet };
+      matrix.forEach(factoryRow => {
+        row[factoryRow.Factory] = factoryRow[sheet] ? 'TRUE' : 'FALSE';
+      });
+      transposed.push(row);
+    });
+    return transposed;
+  }
+
+  const headers = ['Factory', ...Object.keys(factoriesByFile)];
+  const transposedMatrix = transposeMatrix(matrix, headers);
+  console.log('\nFactory consistency matrix (Sheets as rows):');
+  console.table(transposedMatrix);
+
+  // --- STEP 5: Messages for missing factories ---
+  if (validationResults.factoryMismatches.length) {
+    console.log('\n=== Factory Mismatches ===');
+    validationResults.factoryMismatches.forEach(m => console.log(`  ❌ ${m.message}`));
+  } else {
+    console.log('  ✅ All factories present in all relevant sheets.');
+  }
+}
+
+
+
+
 // === Main ===
 async function main() {
   try {
@@ -407,6 +539,9 @@ async function main() {
 
     // Test Case 3: format validation
     await testFormatAgainstSchema(zip, structure, validation);
+
+    // Test Case 3: #Factories and names of factories are same in all input files
+    await testFactoryConsistency(zip, structure, validation);
 
     const summary = generateValidationSummary(validation, structure);
 

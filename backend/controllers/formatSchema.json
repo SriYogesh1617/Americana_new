@@ -1297,7 +1297,9 @@
           "New Outputs",
           "New Line 12"
         ],
-        "columnCount": 58
+        "columnCount": 58,
+        "factoryHeaders": true,
+        "factoryColumns": ["KFC", "NFC", "GFC"]
       }
     }
   }

@@ -287,7 +287,8 @@
           "Safety Stock WH",
           "Default WH"
         ],
-        "columnCount": 6
+        "columnCount": 6,
+        "countryValueColumns": ["Country"]
       }
     }
   },
@@ -762,7 +763,8 @@
           "Truck Freight (USD)/Truckload"
         ],
         "columnCount": 8,
-        "factoryValueColumns": ["Origin"]
+        "factoryValueColumns": ["Origin"],
+        "countryValueColumns": ["Destination"]
       },
       "Factory": {
         "sheetName": "Factory",
@@ -772,7 +774,8 @@
           "FactCountry"
         ],
         "columnCount": 2,
-        "factoryValueColumns": ["FactCode"]
+        "factoryValueColumns": ["FactCode"],
+        "countryValueColumns": ["FactCountry"]
       },
       "Warehouse": {
         "sheetName": "Warehouse",
@@ -781,7 +784,8 @@
           "WHCode",
           "WHCountry"
         ],
-        "columnCount": 2
+        "columnCount": 2,
+        "countryValueColumns": ["WHCountry"]
       }      
     }
   },
@@ -899,7 +903,8 @@
           "46296",
           "46327"          
         ],
-        "columnCount": 27
+        "columnCount": 27,
+        "countryValueColumns": ["Market"]
       }
     }
   },

@@ -529,6 +529,126 @@ async function testFactoryConsistency(zip, zipStructure, validationResults) {
 }
 
 
+// === Test Case 5 | Country names are consistent across all input files ===
+async function testCountryConsistency(zip, zipStructure, validationResults) {
+  console.log('\n🔍 Checking country name consistency across all relevant files…');
+  validationResults.countryMismatches = [];
+
+  // --- STEP 1: Identify relevant sheets from schema ---
+  const countryFiles = [];
+  for (const [fileBase, fileSchema] of Object.entries(formatSchema)) {
+    for (const [sheetName, sheetSchema] of Object.entries(fileSchema.sheets)) {
+      if (sheetSchema.countryValueColumns && sheetSchema.countryValueColumns.length > 0) {
+        countryFiles.push({
+          fileBase,
+          sheetName,
+          headerRow: sheetSchema.headerRow,
+          headers: sheetSchema.headers,
+          countryValueColumns: sheetSchema.countryValueColumns,
+          countryColumnIndices: sheetSchema.countryValueColumns.map(colName =>
+            sheetSchema.headers.findIndex(h => h === colName)
+          ).filter(idx => idx >= 0)
+        });
+      }
+    }
+  }
+
+  if (!countryFiles.length) {
+    console.log('  ⚠️  No country columns found in any schema. Skipping test.');
+    return;
+  }
+
+  const allCountriesSet = new Set();
+  const countriesByFile = {};
+
+  // --- STEP 2: Extract countries from each sheet ---
+  for (const fileDef of countryFiles) {
+    const { fileBase, sheetName, headerRow } = fileDef;
+
+    // Find actual file path in zip
+    const folderPath = Object.keys(zipStructure.folders)
+      .find(fp => zipStructure.folders[fp].files.some(f => f.startsWith(fileBase)));
+    if (!folderPath) continue;
+    const fileName = zipStructure.folders[folderPath].files.find(f => f.startsWith(fileBase));
+    const entryName = `${folderPath}/${fileName}`;
+
+    try {
+      const buffer = zip.readFile(entryName);
+      const workbook = xlsx.read(buffer, { type: 'buffer' });
+      let sheet = workbook.Sheets[sheetName];
+      
+      if (!sheet) {
+        const nonMetaSheets = workbook.SheetNames.filter(
+          n => !n.toLowerCase().includes('meta')
+        );
+        if (nonMetaSheets.length > 0) {
+          const fallbackSheetName = nonMetaSheets[0];
+          sheet = workbook.Sheets[fallbackSheetName];
+          console.log(
+            `  ⚠️ Sheet "${sheetName}" not found in "${fileName}". Using "${fallbackSheetName}" instead.`
+          );
+        }
+      }
+
+      if (!sheet) {
+        console.log(`  ❌ Sheet ${sheetName} missing in ${fileName}`);
+        continue;
+      }
+
+      const range = xlsx.utils.decode_range(sheet['!ref']);
+      const countries = new Set();
+
+      // Read values from each identified country column
+      fileDef.countryColumnIndices.forEach(colIdx => {
+        for (let R = headerRow; R <= range.e.r; R++) {
+          const cellRef = xlsx.utils.encode_cell({ r: R, c: colIdx });
+          const cell = sheet[cellRef];
+          if (cell && cell.v && String(cell.v)) {
+            const countryName = String(cell.v);
+            countries.add(countryName);
+          }
+        }
+      });
+
+      countriesByFile[`${fileBase}:${sheetName}`] = countries;
+      countries.forEach(c => allCountriesSet.add(c));
+
+    } catch (err) {
+      console.log(`  ❌ Unable to read ${fileName} for countries: ${err.message}`);
+    }
+  }
+
+  const allCountries = Array.from(allCountriesSet);
+
+  // --- STEP 3: Build matrix ---
+  const matrix = allCountries.map(country => {
+    const row = { Country: country };
+    for (const key of Object.keys(countriesByFile)) {
+      row[key] = countriesByFile[key].has(country);
+      if (!countriesByFile[key].has(country)) {
+        validationResults.countryMismatches.push({
+          country: country,
+          fileSheet: key,
+          message: `Please check ${key} for missing country "${country}"`
+        });
+      }
+    }
+    return row;
+  });
+
+  // --- STEP 4: Display matrix with countries as rows and files as columns ---
+  console.log('\nCountry consistency matrix (Countries as rows):');
+  console.table(matrix);
+
+  // --- STEP 5: Messages for missing countries ---
+  if (validationResults.countryMismatches.length) {
+    console.log('\n=== Country Mismatches ===');
+    validationResults.countryMismatches.forEach(m => console.log(`  ❌ ${m.message}`));
+  } else {
+    console.log('  ✅ All countries present in all relevant sheets.');
+  }
+}
+
 
 // === Main ===
 async function main() {
@@ -553,8 +673,11 @@ async function main() {
     // Test Case 3: format validation
     await testFormatAgainstSchema(zip, structure, validation);
 
-    // Test Case 3: #Factories and names of factories are same in all input files
+    // Test Case 4: #Factories and names of factories are same in all input files
     await testFactoryConsistency(zip, structure, validation);
+
+    // Test Case 5: Country names are consistent across all input files
+    await testCountryConsistency(zip, structure, validation);
 
     const summary = generateValidationSummary(validation, structure);
 
@@ -586,6 +709,15 @@ async function main() {
     validation.openFailures.forEach(f =>
       console.log(`  ❌ ${f.message}`)
     );
+
+    // ===== Country Consistency Validation Summary =====
+    if (validation.countryMismatches && validation.countryMismatches.length > 0) {
+      console.log('\n=== Country Consistency Validation ===');
+      console.log(`Total country mismatches: ${validation.countryMismatches.length}`);
+      validation.countryMismatches.forEach(c =>
+        console.log(`  ❌ ${c.message}`)
+      );
+    }
 
     process.exit(summary.passed ? 0 : 1);
 

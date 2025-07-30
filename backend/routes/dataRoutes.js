@@ -21,6 +21,7 @@ const {
   getMonthlyUploads,
   getMonthlyWorkbooks
 } = require('../controllers/dataController');
+const { clearDatabase } = require('../clear_database');
 
 // Workbook routes
 router.get('/workbooks', getWorkbooks);
@@ -52,5 +53,23 @@ router.get('/schema', getDatabaseSchema);
 router.get('/monthly-stats', getMonthlyStats);
 router.get('/monthly-uploads', getMonthlyUploads);
 router.get('/monthly-workbooks', getMonthlyWorkbooks);
+
+// Database management routes
+router.delete('/clear-database', async (req, res) => {
+  try {
+    await clearDatabase();
+    res.json({ 
+      success: true, 
+      message: 'Database cleared successfully' 
+    });
+  } catch (error) {
+    console.error('Error clearing database:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to clear database',
+      error: error.message 
+    });
+  }
+});
 
 module.exports = router; 

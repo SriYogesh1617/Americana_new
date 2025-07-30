@@ -22,7 +22,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs (increased from 100)
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   keyGenerator: (req) => {
@@ -43,6 +43,10 @@ app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/data', require('./routes/dataRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
 app.use('/api/demand', require('./routes/demandRoutes'));
+app.use('/api/raw-data', require('./routes/rawDataRoutes'));
+app.use('/api/cursor', require('./routes/cursorRoutes'));
+app.use('/api/t01', require('./routes/t01Routes'));
+app.use('/api/t02', require('./routes/t02Routes'));
 
 // Health check
 app.get('/health', (req, res) => {

@@ -132,4 +132,172 @@ CREATE TRIGGER update_uploaded_files_updated_at BEFORE UPDATE ON uploaded_files 
 CREATE TRIGGER update_workbooks_updated_at BEFORE UPDATE ON workbooks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_worksheets_updated_at BEFORE UPDATE ON worksheets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_macro_calculations_updated_at BEFORE UPDATE ON macro_calculations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_demand_templates_updated_at BEFORE UPDATE ON demand_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 
+CREATE TRIGGER update_demand_templates_updated_at BEFORE UPDATE ON demand_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Table for processed raw data from Demand sheets
+CREATE TABLE IF NOT EXISTS processed_demand_data (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workbook_id UUID REFERENCES workbooks(id) ON DELETE CASCADE,
+    worksheet_id UUID REFERENCES worksheets(id) ON DELETE CASCADE,
+    row_index INTEGER NOT NULL,
+    geography VARCHAR(255), -- Geography column from raw data
+    market VARCHAR(255), -- Market column from raw data
+    cty VARCHAR(255), -- Processed CTY column (Market from Country Master)
+    fgsku_code VARCHAR(255), -- FGSKU Code from raw data
+    demand_cases DECIMAL(15,2), -- Demand cases value
+    production_environment VARCHAR(255), -- Production Environment
+    safety_stock_wh VARCHAR(255), -- Safety Stock WH
+    inventory_days_norm DECIMAL(10,2), -- Inventory Days (Norm)
+    supply DECIMAL(15,2), -- Supply value
+    cons DECIMAL(15,2), -- CONS value
+    pd_npd VARCHAR(255), -- PD/NPD column from raw data (contains PD/NPD information)
+    month VARCHAR(2), -- Month (01-12)
+    year INTEGER, -- Year
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for processed demand data
+CREATE INDEX IF NOT EXISTS idx_processed_demand_data_workbook_id ON processed_demand_data(workbook_id);
+CREATE INDEX IF NOT EXISTS idx_processed_demand_data_worksheet_id ON processed_demand_data(worksheet_id);
+CREATE INDEX IF NOT EXISTS idx_processed_demand_data_geography_market ON processed_demand_data(geography, market);
+CREATE INDEX IF NOT EXISTS idx_processed_demand_data_cty ON processed_demand_data(cty);
+CREATE INDEX IF NOT EXISTS idx_processed_demand_data_month_year ON processed_demand_data(month, year);
+
+-- Trigger to update updated_at for processed_demand_data
+CREATE TRIGGER update_processed_demand_data_updated_at BEFORE UPDATE ON processed_demand_data FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Table for demand country master data
+CREATE TABLE IF NOT EXISTS demand_country_master (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    country_name VARCHAR(255) NOT NULL, -- Geography_Market combination
+    market VARCHAR(255), -- Final market value
+    pd_npd VARCHAR(10), -- PD or NPD
+    origin VARCHAR(100), -- Local or Import
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for demand country master
+CREATE INDEX IF NOT EXISTS idx_demand_country_master_country_name ON demand_country_master(country_name);
+CREATE INDEX IF NOT EXISTS idx_demand_country_master_market ON demand_country_master(market);
+
+-- Trigger to update updated_at for demand_country_master
+CREATE TRIGGER update_demand_country_master_updated_at BEFORE UPDATE ON demand_country_master FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- CURSOR TABLES FOR SPECIFIC SHEETS
+-- ============================================================================
+
+-- Table for Demand sheet cursor data
+CREATE TABLE IF NOT EXISTS demand_cursor (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workbook_id UUID REFERENCES workbooks(id) ON DELETE CASCADE,
+    worksheet_id UUID REFERENCES worksheets(id) ON DELETE CASCADE,
+    row_index INTEGER NOT NULL,
+    column_index INTEGER NOT NULL,
+    column_name VARCHAR(255),
+    cell_value TEXT,
+    cell_type VARCHAR(50), -- 'string', 'number', 'date', 'boolean', 'formula'
+    formula TEXT, -- for storing Excel formulas
+    upload_batch_id UUID, -- To group data from same upload
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table for Demand Country Master sheet cursor data
+CREATE TABLE IF NOT EXISTS demand_country_master_cursor (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workbook_id UUID REFERENCES workbooks(id) ON DELETE CASCADE,
+    worksheet_id UUID REFERENCES worksheets(id) ON DELETE CASCADE,
+    row_index INTEGER NOT NULL,
+    column_index INTEGER NOT NULL,
+    column_name VARCHAR(255),
+    cell_value TEXT,
+    cell_type VARCHAR(50), -- 'string', 'number', 'date', 'boolean', 'formula'
+    formula TEXT, -- for storing Excel formulas
+    upload_batch_id UUID, -- To group data from same upload
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table for Base Scenario Configuration / Planning Time Period sheet cursor data
+CREATE TABLE IF NOT EXISTS base_scenario_configuration_cursor (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workbook_id UUID REFERENCES workbooks(id) ON DELETE CASCADE,
+    worksheet_id UUID REFERENCES worksheets(id) ON DELETE CASCADE,
+    row_index INTEGER NOT NULL,
+    column_index INTEGER NOT NULL,
+    column_name VARCHAR(255),
+    cell_value TEXT,
+    cell_type VARCHAR(50), -- 'string', 'number', 'date', 'boolean', 'formula'
+    formula TEXT, -- for storing Excel formulas
+    upload_batch_id UUID, -- To group data from same upload
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table for Capacity sheet cursor data
+CREATE TABLE IF NOT EXISTS capacity_cursor (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workbook_id UUID REFERENCES workbooks(id) ON DELETE CASCADE,
+    worksheet_id UUID REFERENCES worksheets(id) ON DELETE CASCADE,
+    row_index INTEGER NOT NULL,
+    column_index INTEGER NOT NULL,
+    column_name VARCHAR(255),
+    cell_value TEXT,
+    cell_type VARCHAR(50), -- 'string', 'number', 'date', 'boolean', 'formula'
+    formula TEXT, -- for storing Excel formulas
+    upload_batch_id UUID, -- To group data from same upload
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table for Freight Storage Costs sheet cursor data
+CREATE TABLE IF NOT EXISTS freight_storage_costs_cursor (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workbook_id UUID REFERENCES workbooks(id) ON DELETE CASCADE,
+    worksheet_id UUID REFERENCES worksheets(id) ON DELETE CASCADE,
+    row_index INTEGER NOT NULL,
+    column_index INTEGER NOT NULL,
+    column_name VARCHAR(255),
+    cell_value TEXT,
+    cell_type VARCHAR(50), -- 'string', 'number', 'date', 'boolean', 'formula'
+    formula TEXT, -- for storing Excel formulas
+    upload_batch_id UUID, -- To group data from same upload
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for cursor tables
+CREATE INDEX IF NOT EXISTS idx_demand_cursor_workbook_id ON demand_cursor(workbook_id);
+CREATE INDEX IF NOT EXISTS idx_demand_cursor_worksheet_id ON demand_cursor(worksheet_id);
+CREATE INDEX IF NOT EXISTS idx_demand_cursor_row_col ON demand_cursor(worksheet_id, row_index, column_index);
+CREATE INDEX IF NOT EXISTS idx_demand_cursor_upload_batch ON demand_cursor(upload_batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_demand_country_master_cursor_workbook_id ON demand_country_master_cursor(workbook_id);
+CREATE INDEX IF NOT EXISTS idx_demand_country_master_cursor_worksheet_id ON demand_country_master_cursor(worksheet_id);
+CREATE INDEX IF NOT EXISTS idx_demand_country_master_cursor_row_col ON demand_country_master_cursor(worksheet_id, row_index, column_index);
+CREATE INDEX IF NOT EXISTS idx_demand_country_master_cursor_upload_batch ON demand_country_master_cursor(upload_batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_base_scenario_configuration_cursor_workbook_id ON base_scenario_configuration_cursor(workbook_id);
+CREATE INDEX IF NOT EXISTS idx_base_scenario_configuration_cursor_worksheet_id ON base_scenario_configuration_cursor(worksheet_id);
+CREATE INDEX IF NOT EXISTS idx_base_scenario_configuration_cursor_row_col ON base_scenario_configuration_cursor(worksheet_id, row_index, column_index);
+CREATE INDEX IF NOT EXISTS idx_base_scenario_configuration_cursor_upload_batch ON base_scenario_configuration_cursor(upload_batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_capacity_cursor_workbook_id ON capacity_cursor(workbook_id);
+CREATE INDEX IF NOT EXISTS idx_capacity_cursor_worksheet_id ON capacity_cursor(worksheet_id);
+CREATE INDEX IF NOT EXISTS idx_capacity_cursor_row_col ON capacity_cursor(worksheet_id, row_index, column_index);
+CREATE INDEX IF NOT EXISTS idx_capacity_cursor_upload_batch ON capacity_cursor(upload_batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_freight_storage_costs_cursor_workbook_id ON freight_storage_costs_cursor(workbook_id);
+CREATE INDEX IF NOT EXISTS idx_freight_storage_costs_cursor_worksheet_id ON freight_storage_costs_cursor(worksheet_id);
+CREATE INDEX IF NOT EXISTS idx_freight_storage_costs_cursor_row_col ON freight_storage_costs_cursor(worksheet_id, row_index, column_index);
+CREATE INDEX IF NOT EXISTS idx_freight_storage_costs_cursor_upload_batch ON freight_storage_costs_cursor(upload_batch_id);
+
+-- Triggers to update updated_at for cursor tables
+CREATE TRIGGER update_demand_cursor_updated_at BEFORE UPDATE ON demand_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_demand_country_master_cursor_updated_at BEFORE UPDATE ON demand_country_master_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_base_scenario_configuration_cursor_updated_at BEFORE UPDATE ON base_scenario_configuration_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_capacity_cursor_updated_at BEFORE UPDATE ON capacity_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_freight_storage_costs_cursor_updated_at BEFORE UPDATE ON freight_storage_costs_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 

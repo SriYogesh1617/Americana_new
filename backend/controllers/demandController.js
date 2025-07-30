@@ -560,7 +560,7 @@ const processDemandData = async (demandWorkbook, countryMasterWorkbook) => {
             continue;
           }
           
-          // Create Geography-Market column from Demand sheet data
+          // Get Geography and Market columns from Demand sheet data
           const geography = row[0] || ''; // Geography column (Column 1)
           const market = row[1] || ''; // Market column (Column 2)
           
@@ -572,23 +572,21 @@ const processDemandData = async (demandWorkbook, countryMasterWorkbook) => {
             continue;
           }
           
-          const geographyMarket = `${geography}_${market}`;
+          console.log('Processing Geography:', geography, 'Market:', market);
           
-          console.log('Created Geography-Market:', geographyMarket, 'from Geography:', geography, 'Market:', market);
-          
-          // Map Geography-Market to actual country name from Demand_Country_Master
-          const cty = await mapToCountry(geographyMarket, countryMasterWorkbook);
+          // Map Geography and Market to Country Name from Demand_Country_Master
+          const cty = await mapToCountry(geography, market, countryMasterWorkbook);
           
           // Round DemandCases to nearest integer (will be populated from monthly data)
           const demandCases = 0; // Will be populated from monthly demand data
           
           // Create processed row using correct column mapping
           const processedRow = {
-            CTY: cty,
+            CTY: cty, // This will be the Country Name from Demand_Country_Master
             FGSKUCode: row[6] || null, // Unified code column (Column 7)
             MthNum: null, // Will be populated based on month/year
             DemandCases: demandCases,
-            Market: market,
+            Market: market, // Original Market value from demand sheet
             'Production Environment': null, // Will be populated from other sources
             'Safety Stock WH': null, // Will be populated from country master
             'Inventory Days (Norm)': null, // Will be populated from other sources
@@ -665,14 +663,14 @@ const convertSheetDataToArray = (sheetData) => {
 };
 
 // Helper function to map Geography-Market to Country
-const mapToCountry = async (geographyMarket, countryMasterWorkbook) => {
+const mapToCountry = async (geography, market, countryMasterWorkbook) => {
   try {
-    console.log('Mapping Geography-Market to Country:', geographyMarket);
+    console.log('Mapping Geography and Market to Country:', { geography, market });
     console.log('Country Master Workbook:', countryMasterWorkbook?.workbook_name);
     
     if (!countryMasterWorkbook) {
       console.log('No country master workbook found, using fallback');
-      return geographyMarket;
+      return market; // Return market as fallback
     }
 
     // Get all worksheets from country master workbook
@@ -693,60 +691,63 @@ const mapToCountry = async (geographyMarket, countryMasterWorkbook) => {
         
         // Find the Country Name (Raw demand) column and Country column
         const headers = dataArray[0] || [];
-        let geographyMarketColIndex = -1;
-        let countryNameColIndex = -1;
+        let countryNameRawDemandColIndex = -1;
+        let countryColIndex = -1;
         
-        console.log('Looking for Country Name (Raw demand) column in headers:', headers);
+        console.log('Looking for Country Name (Raw demand) and Country columns in headers:', headers);
         
         for (let i = 0; i < headers.length; i++) {
           const header = headers[i].toLowerCase();
           console.log(`Column ${i}: "${headers[i]}" (lowercase: "${header}")`);
           
           if (header.includes('country name') && header.includes('raw demand')) {
-            geographyMarketColIndex = i;
-            countryNameColIndex = i; // Use the same column for both lookup and return
+            countryNameRawDemandColIndex = i;
             console.log(`Found Country Name (Raw demand) column at index ${i}: "${headers[i]}"`);
+          } else if (header === 'country') {
+            countryColIndex = i;
+            console.log(`Found Country column at index ${i}: "${headers[i]}"`);
           }
         }
         
-        console.log('Country Name (Raw demand) column index:', geographyMarketColIndex);
-        console.log('Country Name column index:', countryNameColIndex);
+        console.log('Column indices - Country Name (Raw demand):', countryNameRawDemandColIndex, 'Country:', countryColIndex);
         
-        if (geographyMarketColIndex >= 0 && countryNameColIndex >= 0) {
-          // Perform VLOOKUP - match Geography_Market with Country Name (Raw demand) column
+        if (countryNameRawDemandColIndex >= 0 && countryColIndex >= 0) {
+          // Create the Geography_Market combination to match against
+          const geographyMarket = `${geography}_${market}`;
           console.log(`Searching for "${geographyMarket}" in Country Name (Raw demand) column...`);
           
           for (let rowIndex = 1; rowIndex < dataArray.length; rowIndex++) {
             const row = dataArray[rowIndex];
-            const rowGeographyMarket = row[geographyMarketColIndex];
+            const rowGeographyMarket = row[countryNameRawDemandColIndex];
             
             // Try exact match
             if (rowGeographyMarket === geographyMarket) {
-              const countryName = row[countryNameColIndex];
+              const countryName = row[countryColIndex];
               console.log(`Found exact match: ${geographyMarket} -> ${countryName}`);
-              return countryName;
+              return countryName; // Return the Country Name for CTY column
             }
             
             // Log first few comparisons for debugging
             if (rowIndex <= 5) {
-              console.log(`Row ${rowIndex}: Geography_Market="${rowGeographyMarket}", Country Name="${row[countryNameColIndex]}"`);
+              console.log(`Row ${rowIndex}: Geography_Market="${rowGeographyMarket}", Country="${row[countryColIndex]}"`);
             }
           }
           
           console.log(`No match found for "${geographyMarket}" in Country Name (Raw demand) column`);
         } else {
-          console.log('Could not find Country Name (Raw demand) column in Demand_Country_Master');
+          console.log('Could not find required columns in Demand_Country_Master');
           console.log('Available columns:', headers);
+          console.log('Required columns: Country Name (Raw demand), Country');
         }
       }
     }
     
-    console.log('No match found, using fallback:', geographyMarket);
-    return geographyMarket;
+    console.log('No match found, using fallback:', market);
+    return market; // Return market as fallback
     
   } catch (error) {
     console.error('Error mapping to country:', error);
-    return geographyMarket;
+    return market; // Return market as fallback
   }
 };
 
@@ -819,6 +820,635 @@ const addDemandFormulas = async (worksheet, calculations) => {
   }
 };
 
+// Create filtered demand table cursor
+const createFilteredDemandCursor = async (req, res) => {
+  try {
+    const { 
+      filters = {}, 
+      sortBy = 'created_at', 
+      sortOrder = 'DESC',
+      limit = 1000,
+      offset = 0 
+    } = req.body;
+
+    // Validate sort order
+    const validSortOrders = ['ASC', 'DESC'];
+    if (!validSortOrders.includes(sortOrder.toUpperCase())) {
+      return res.status(400).json({ 
+        error: 'Invalid sort order. Use ASC or DESC' 
+      });
+    }
+
+    // Build WHERE clause based on filters
+    let whereConditions = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    // Geography filter
+    if (filters.geography) {
+      whereConditions.push(`geography ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.geography}%`);
+      paramIndex++;
+    }
+
+    // Market filter
+    if (filters.market) {
+      whereConditions.push(`market ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.market}%`);
+      paramIndex++;
+    }
+
+    // CTY filter
+    if (filters.cty) {
+      whereConditions.push(`cty ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.cty}%`);
+      paramIndex++;
+    }
+
+    // FGSKU Code filter
+    if (filters.fgsku_code) {
+      whereConditions.push(`fgsku_code ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.fgsku_code}%`);
+      paramIndex++;
+    }
+
+    // Month filter
+    if (filters.month) {
+      whereConditions.push(`month = $${paramIndex}`);
+      queryParams.push(filters.month);
+      paramIndex++;
+    }
+
+    // Year filter
+    if (filters.year) {
+      whereConditions.push(`year = $${paramIndex}`);
+      queryParams.push(filters.year);
+      paramIndex++;
+    }
+
+    // Workbook filter
+    if (filters.workbook_id) {
+      whereConditions.push(`workbook_id = $${paramIndex}`);
+      queryParams.push(filters.workbook_id);
+      paramIndex++;
+    }
+
+    // Worksheet filter
+    if (filters.worksheet_id) {
+      whereConditions.push(`worksheet_id = $${paramIndex}`);
+      queryParams.push(filters.worksheet_id);
+      paramIndex++;
+    }
+
+    // Date range filters
+    if (filters.date_from) {
+      whereConditions.push(`created_at >= $${paramIndex}`);
+      queryParams.push(filters.date_from);
+      paramIndex++;
+    }
+
+    if (filters.date_to) {
+      whereConditions.push(`created_at <= $${paramIndex}`);
+      queryParams.push(filters.date_to);
+      paramIndex++;
+    }
+
+    // Build the complete query
+    let query = `
+      SELECT 
+        id,
+        workbook_id,
+        worksheet_id,
+        row_index,
+        geography,
+        market,
+        cty,
+        fgsku_code,
+        demand_cases,
+        production_environment,
+        safety_stock_wh,
+        inventory_days_norm,
+        supply,
+        cons,
+        month,
+        year,
+        created_at,
+        updated_at
+      FROM processed_demand_data
+    `;
+
+    if (whereConditions.length > 0) {
+      query += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+
+    query += ` ORDER BY ${sortBy} ${sortOrder}`;
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryParams.push(limit, offset);
+
+    // Execute the query
+    const result = await query(query, queryParams);
+
+    // Get total count for pagination
+    let countQuery = `SELECT COUNT(*) as total FROM processed_demand_data`;
+    if (whereConditions.length > 0) {
+      countQuery += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+    
+    const countResult = await query(countQuery, queryParams.slice(0, -2));
+    const totalCount = parseInt(countResult.rows[0].total);
+
+    res.json({
+      data: result.rows,
+      pagination: {
+        total: totalCount,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        page: Math.floor(offset / limit) + 1,
+        totalPages: Math.ceil(totalCount / limit)
+      },
+      filters: filters,
+      sortBy: sortBy,
+      sortOrder: sortOrder
+    });
+
+  } catch (error) {
+    console.error('Error creating filtered demand cursor:', error);
+    res.status(500).json({ error: 'Failed to create filtered demand cursor' });
+  }
+};
+
+// Get demand cursor statistics
+const getDemandCursorStats = async (req, res) => {
+  try {
+    const { filters = {} } = req.body;
+
+    // Build WHERE clause based on filters (same as cursor function)
+    let whereConditions = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    // Apply same filters as cursor function
+    if (filters.geography) {
+      whereConditions.push(`geography ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.geography}%`);
+      paramIndex++;
+    }
+
+    if (filters.market) {
+      whereConditions.push(`market ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.market}%`);
+      paramIndex++;
+    }
+
+    if (filters.cty) {
+      whereConditions.push(`cty ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.cty}%`);
+      paramIndex++;
+    }
+
+    if (filters.month) {
+      whereConditions.push(`month = $${paramIndex}`);
+      queryParams.push(filters.month);
+      paramIndex++;
+    }
+
+    if (filters.year) {
+      whereConditions.push(`year = $${paramIndex}`);
+      queryParams.push(filters.year);
+      paramIndex++;
+    }
+
+    let whereClause = '';
+    if (whereConditions.length > 0) {
+      whereClause = ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+
+    // Get various statistics
+    const statsQueries = [
+      {
+        name: 'total_records',
+        query: `SELECT COUNT(*) as count FROM processed_demand_data${whereClause}`
+      },
+      {
+        name: 'unique_geographies',
+        query: `SELECT COUNT(DISTINCT geography) as count FROM processed_demand_data${whereClause}`
+      },
+      {
+        name: 'unique_markets',
+        query: `SELECT COUNT(DISTINCT market) as count FROM processed_demand_data${whereClause}`
+      },
+      {
+        name: 'unique_cty',
+        query: `SELECT COUNT(DISTINCT cty) as count FROM processed_demand_data${whereClause}`
+      },
+      {
+        name: 'unique_fgsku_codes',
+        query: `SELECT COUNT(DISTINCT fgsku_code) as count FROM processed_demand_data${whereClause}`
+      },
+      {
+        name: 'total_demand_cases',
+        query: `SELECT COALESCE(SUM(demand_cases), 0) as sum FROM processed_demand_data${whereClause}`
+      },
+      {
+        name: 'total_supply',
+        query: `SELECT COALESCE(SUM(supply), 0) as sum FROM processed_demand_data${whereClause}`
+      },
+      {
+        name: 'total_cons',
+        query: `SELECT COALESCE(SUM(cons), 0) as sum FROM processed_demand_data${whereClause}`
+      },
+      {
+        name: 'avg_inventory_days',
+        query: `SELECT COALESCE(AVG(inventory_days_norm), 0) as avg FROM processed_demand_data${whereClause}`
+      }
+    ];
+
+    const stats = {};
+
+    for (const statQuery of statsQueries) {
+      const result = await query(statQuery.query, queryParams);
+      if (statQuery.name.includes('sum') || statQuery.name.includes('avg')) {
+        stats[statQuery.name] = parseFloat(result.rows[0].sum || result.rows[0].avg || 0);
+      } else {
+        stats[statQuery.name] = parseInt(result.rows[0].count || 0);
+      }
+    }
+
+    // Get top geographies
+    const topGeographiesResult = await query(
+      `SELECT geography, COUNT(*) as count 
+       FROM processed_demand_data${whereClause} 
+       GROUP BY geography 
+       ORDER BY count DESC 
+       LIMIT 10`,
+      queryParams
+    );
+
+    // Get top markets
+    const topMarketsResult = await query(
+      `SELECT market, COUNT(*) as count 
+       FROM processed_demand_data${whereClause} 
+       GROUP BY market 
+       ORDER BY count DESC 
+       LIMIT 10`,
+      queryParams
+    );
+
+    // Get top CTY values
+    const topCTYResult = await query(
+      `SELECT cty, COUNT(*) as count 
+       FROM processed_demand_data${whereClause} 
+       GROUP BY cty 
+       ORDER BY count DESC 
+       LIMIT 10`,
+      queryParams
+    );
+
+    res.json({
+      statistics: stats,
+      top_geographies: topGeographiesResult.rows,
+      top_markets: topMarketsResult.rows,
+      top_cty: topCTYResult.rows,
+      filters: filters
+    });
+
+  } catch (error) {
+    console.error('Error getting demand cursor stats:', error);
+    res.status(500).json({ error: 'Failed to get demand cursor statistics' });
+  }
+};
+
+// Export filtered demand data
+const exportFilteredDemandData = async (req, res) => {
+  try {
+    const { 
+      filters = {}, 
+      format = 'xlsx',
+      sortBy = 'created_at', 
+      sortOrder = 'DESC'
+    } = req.body;
+
+    // Validate format
+    const allowedFormats = ['xlsx', 'xlsm', 'csv'];
+    if (!allowedFormats.includes(format)) {
+      return res.status(400).json({ 
+        error: 'Invalid format. Allowed formats: xlsx, xlsm, csv' 
+      });
+    }
+
+    // Build WHERE clause (same as cursor function)
+    let whereConditions = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (filters.geography) {
+      whereConditions.push(`geography ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.geography}%`);
+      paramIndex++;
+    }
+
+    if (filters.market) {
+      whereConditions.push(`market ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.market}%`);
+      paramIndex++;
+    }
+
+    if (filters.cty) {
+      whereConditions.push(`cty ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.cty}%`);
+      paramIndex++;
+    }
+
+    if (filters.fgsku_code) {
+      whereConditions.push(`fgsku_code ILIKE $${paramIndex}`);
+      queryParams.push(`%${filters.fgsku_code}%`);
+      paramIndex++;
+    }
+
+    if (filters.month) {
+      whereConditions.push(`month = $${paramIndex}`);
+      queryParams.push(filters.month);
+      paramIndex++;
+    }
+
+    if (filters.year) {
+      whereConditions.push(`year = $${paramIndex}`);
+      queryParams.push(filters.year);
+      paramIndex++;
+    }
+
+    if (filters.workbook_id) {
+      whereConditions.push(`workbook_id = $${paramIndex}`);
+      queryParams.push(filters.workbook_id);
+      paramIndex++;
+    }
+
+    if (filters.worksheet_id) {
+      whereConditions.push(`worksheet_id = $${paramIndex}`);
+      queryParams.push(filters.worksheet_id);
+      paramIndex++;
+    }
+
+    let whereClause = '';
+    if (whereConditions.length > 0) {
+      whereClause = ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+
+    // Get filtered data
+    const query = `
+      SELECT 
+        geography,
+        market,
+        cty,
+        fgsku_code,
+        demand_cases,
+        production_environment,
+        safety_stock_wh,
+        inventory_days_norm,
+        supply,
+        cons,
+        month,
+        year,
+        created_at
+      FROM processed_demand_data${whereClause}
+      ORDER BY ${sortBy} ${sortOrder}
+    `;
+
+    const result = await query(query, queryParams);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No data found with the specified filters' });
+    }
+
+    // Create export directory
+    const exportDir = path.join(__dirname, '../exports/demand');
+    await fs.mkdir(exportDir, { recursive: true });
+    
+    // Generate filename
+    const timestamp = Date.now();
+    const filename = `filtered_demand_data_${timestamp}.${format}`;
+    const filepath = path.join(exportDir, filename);
+
+    if (format === 'csv') {
+      // Export as CSV
+      const csvData = convertDemandDataToCSV(result.rows);
+      await fs.writeFile(filepath, csvData);
+    } else {
+      // Export as Excel
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(result.rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Filtered_Demand_Data');
+      XLSX.writeFile(wb, filepath);
+    }
+
+    // Send file for download
+    res.download(filepath, filename, (err) => {
+      if (err) {
+        console.error('Error sending file:', err);
+        res.status(500).json({ error: 'Failed to download file' });
+      }
+      
+      // Clean up file after download
+      setTimeout(async () => {
+        try {
+          await fs.unlink(filepath);
+        } catch (cleanupErr) {
+          console.error('Error cleaning up export file:', cleanupErr);
+        }
+      }, 5000);
+    });
+
+  } catch (error) {
+    console.error('Error exporting filtered demand data:', error);
+    res.status(500).json({ error: 'Failed to export filtered demand data' });
+  }
+};
+
+// Helper function to convert demand data to CSV
+const convertDemandDataToCSV = (data) => {
+  if (!data || data.length === 0) {
+    return '';
+  }
+
+  const headers = Object.keys(data[0]);
+  const csvRows = [headers.join(',')];
+
+  for (const row of data) {
+    const values = headers.map(header => {
+      const value = row[header];
+      if (value === null || value === undefined) {
+        return '';
+      }
+      const cellStr = String(value);
+      if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+        return `"${cellStr.replace(/"/g, '""')}"`;
+      }
+      return cellStr;
+    });
+    csvRows.push(values.join(','));
+  }
+
+  return csvRows.join('\n');
+};
+
+// Get filtered demand data with lookup logic
+const getFilteredDemandData = async (req, res) => {
+  try {
+    const { limit = 10000, offset = 0 } = req.query; // Increased default limit to show more data
+
+    // Query to get demand data - Filter for PD records and exclude "Other" from origin
+    // Sort by unified_code first, then by month_num to group all months for each code together
+    // Only include records with valid month_num (not null)
+    // Prioritize codes that have the complete 5-16 sequence
+    const dataQuery = `
+      SELECT 
+        pd.market as cty,
+        pd.pd_npd as pd_npd,
+        pd.origin as origin,
+        pd.fgsku_code as unified_code,
+        pd.month_num as mth_num,
+        pd.demand_cases
+      FROM processed_demand_data pd
+      WHERE pd.geography IS NOT NULL 
+        AND pd.market IS NOT NULL
+        AND pd.pd_npd = 'PD'
+        AND (pd.origin IS NULL OR pd.origin != 'Other')
+        AND pd.month_num IS NOT NULL
+        AND pd.fgsku_code IN (
+          SELECT fgsku_code 
+          FROM processed_demand_data 
+          WHERE pd_npd = 'PD' 
+            AND (origin IS NULL OR origin != 'Other') 
+            AND month_num IS NOT NULL
+          GROUP BY fgsku_code 
+          HAVING COUNT(DISTINCT month_num) >= 12
+        )
+      ORDER BY pd.fgsku_code ASC, pd.month_num ASC
+      LIMIT $1 OFFSET $2
+    `;
+
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM processed_demand_data pd
+      WHERE pd.geography IS NOT NULL 
+        AND pd.market IS NOT NULL
+        AND pd.pd_npd = 'PD'
+        AND (pd.origin IS NULL OR pd.origin != 'Other')
+        AND pd.month_num IS NOT NULL
+        AND pd.fgsku_code IN (
+          SELECT fgsku_code 
+          FROM processed_demand_data 
+          WHERE pd_npd = 'PD' 
+            AND (origin IS NULL OR origin != 'Other') 
+            AND month_num IS NOT NULL
+          GROUP BY fgsku_code 
+          HAVING COUNT(DISTINCT month_num) >= 12
+        )
+    `;
+
+    const result = await query(dataQuery, [limit, offset]);
+    const countResult = await query(countQuery);
+
+    const totalCount = parseInt(countResult.rows[0].total);
+
+    // Transform data to match frontend expectations
+    const transformedData = result.rows.map(row => ({
+      cty: row.cty || 'N/A',
+      pdNpd: row.pd_npd || 'PD',
+      origin: row.origin || 'N/A',
+      unifiedCode: row.unified_code || 'N/A',
+      mthNum: row.mth_num || 'N/A',
+      demandCases: row.demand_cases || 0
+    }));
+
+    res.json({
+      data: transformedData,
+      pagination: {
+        total: totalCount,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        page: Math.floor(offset / limit) + 1,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting filtered demand data:', error);
+    res.status(500).json({ error: 'Failed to get filtered demand data' });
+  }
+};
+
+// Get demand data statistics
+const getDemandDataStats = async (req, res) => {
+  try {
+    // Get statistics for the data - Filter for PD records and exclude "Other" from origin
+    const statsQuery = `
+      SELECT 
+        COUNT(*) as total_records,
+        COUNT(DISTINCT pd.market) as unique_cty,
+        COUNT(DISTINCT pd.fgsku_code) as unique_codes,
+        COALESCE(SUM(pd.demand_cases), 0) as total_demand_cases,
+        COUNT(DISTINCT pd.month) as unique_months
+      FROM processed_demand_data pd
+      WHERE pd.geography IS NOT NULL 
+        AND pd.market IS NOT NULL
+        AND pd.pd_npd = 'PD'
+        AND (pd.origin IS NULL OR pd.origin != 'Other')
+    `;
+
+    // Get top CTY values - Filter for PD records and exclude "Other" from origin
+    const topCTYQuery = `
+      SELECT 
+        pd.market as cty,
+        COUNT(*) as count
+      FROM processed_demand_data pd
+      WHERE pd.geography IS NOT NULL 
+        AND pd.market IS NOT NULL
+        AND pd.pd_npd = 'PD'
+        AND (pd.origin IS NULL OR pd.origin != 'Other')
+      GROUP BY pd.market
+      ORDER BY count DESC
+      LIMIT 10
+    `;
+
+    // Get Origin distribution - Show all origins except "Other" for PD records
+    const originQuery = `
+      SELECT 
+        COALESCE(pd.origin, 'N/A') as origin,
+        COUNT(*) as count
+      FROM processed_demand_data pd
+      WHERE pd.geography IS NOT NULL 
+        AND pd.market IS NOT NULL
+        AND pd.pd_npd = 'PD'
+        AND (pd.origin IS NULL OR pd.origin != 'Other')
+      GROUP BY pd.origin
+      ORDER BY count DESC
+    `;
+
+    const statsResult = await query(statsQuery);
+    const topCTYResult = await query(topCTYQuery);
+    const originResult = await query(originQuery);
+
+    const stats = statsResult.rows[0];
+
+    res.json({
+      statistics: {
+        total_records: parseInt(stats.total_records),
+        unique_cty: parseInt(stats.unique_cty),
+        unique_codes: parseInt(stats.unique_codes),
+        total_demand_cases: parseFloat(stats.total_demand_cases),
+        unique_months: parseInt(stats.unique_months)
+      },
+      top_cty: topCTYResult.rows,
+      origin_distribution: originResult.rows
+    });
+
+  } catch (error) {
+    console.error('Error getting demand data stats:', error);
+    res.status(500).json({ error: 'Failed to get demand data statistics' });
+  }
+};
+
 module.exports = {
   createDemandTemplate,
   executeDemandTemplate,
@@ -826,5 +1456,10 @@ module.exports = {
   getDemandTemplate,
   getDemandExportHistory,
   createDefaultDemandTemplate,
-  checkMonthData
+  checkMonthData,
+  createFilteredDemandCursor,
+  getDemandCursorStats,
+  exportFilteredDemandData,
+  getFilteredDemandData,
+  getDemandDataStats
 }; 

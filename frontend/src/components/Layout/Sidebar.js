@@ -9,7 +9,9 @@ import {
   Settings,
   Database,
   Calendar,
-  Download
+  Download,
+  Search,
+  Grid
 } from 'lucide-react';
 
 const SidebarContainer = styled.aside`
@@ -161,6 +163,37 @@ const Sidebar = () => {
           >
             <Download size={18} />
             <NavText>Demand Templates</NavText>
+          </NavItem>
+          
+          <NavItem 
+            to="/demand-cursor" 
+            $isActive={isActive('/demand-cursor')}
+          >
+            <Search size={18} />
+            <NavText>Filtered Demand</NavText>
+          </NavItem>
+          
+          <NavItem 
+            to="/cursor-data" 
+            $isActive={isActive('/cursor-data')}
+          >
+            <Grid size={18} />
+            <NavText>Cursor Data</NavText>
+          </NavItem>
+          
+          <NavItem 
+            to="/t01-data" 
+            $isActive={isActive('/t01-data')}
+          >
+            <BarChart3 size={18} />
+            <NavText>T01 Data</NavText>
+          </NavItem>
+          <NavItem 
+            to="/t02-data" 
+            $isActive={isActive('/t02-data')}
+          >
+            <BarChart3 size={18} />
+            <NavText>T02 Data</NavText>
           </NavItem>
         </NavSection>
         

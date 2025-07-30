@@ -134,6 +134,67 @@ export const demandAPI = {
   },
   getDemandExportHistory: () => api.get('/demand/export-history'),
   checkMonthData: (month, year) => api.get(`/demand/check-month?month=${month}&year=${year}`),
+  
+  // Demand filtered cursor API
+  createFilteredDemandCursor: (data) => api.post('/demand/cursor', data),
+  getDemandCursorStats: (data) => api.post('/demand/cursor/stats', data),
+  exportFilteredDemandData: (data) => api.post('/demand/cursor/export', data, {
+    responseType: 'blob',
+  }),
+  
+  // New filtered demand data API
+  getFilteredDemandData: (params) => api.get(`/demand/filtered-data?${new URLSearchParams(params)}`),
+  getFilteredDemandStats: () => api.get('/demand/filtered-data/stats'),
+};
+
+// Cursor API for specific sheet tables
+export const cursorAPI = {
+  // Demand cursor
+  getDemandCursorData: (params = {}) => api.get('/cursor/demand', { params }),
+  getDemandCursorDataAsArray: (worksheetId) => api.get(`/cursor/demand/${worksheetId}/array`),
+  
+  // Demand Country Master cursor
+  getDemandCountryMasterCursorData: (params = {}) => api.get('/cursor/demand-country-master', { params }),
+  getDemandCountryMasterCursorDataAsArray: (worksheetId) => api.get(`/cursor/demand-country-master/${worksheetId}/array`),
+  
+  // Base Scenario Configuration cursor
+  getBaseScenarioConfigurationCursorData: (params = {}) => api.get('/cursor/base-scenario-configuration', { params }),
+  getBaseScenarioConfigurationCursorDataAsArray: (worksheetId) => api.get(`/cursor/base-scenario-configuration/${worksheetId}/array`),
+  
+  // Statistics and management
+  getCursorStats: () => api.get('/cursor/stats'),
+  getUploadBatches: () => api.get('/cursor/upload-batches'),
+  clearAllCursorData: () => api.delete('/cursor/clear'),
+};
+
+// T01 API for calculated data
+export const t01API = {
+  // Calculate T01 data from cursor tables
+  calculateT01Data: (uploadBatchId) => api.post('/t01/calculate', { uploadBatchId }),
+  
+  // Get T01 data
+  getT01Data: (params = {}) => api.get('/t01/data', { params }),
+  getT01DataAsArray: (uploadBatchId) => api.get(`/t01/data/array?uploadBatchId=${uploadBatchId}`),
+  
+  // Export T01 data to Excel
+  exportT01ToExcel: (uploadBatchId) => api.get(`/t01/export?uploadBatchId=${uploadBatchId}`, {
+    responseType: 'blob',
+  }),
+  
+  // Statistics and management
+  getT01Stats: () => api.get('/t01/stats'),
+  clearAllT01Data: () => api.delete('/t01/clear'),
+};
+
+export const t02API = {
+  calculateT02Data: (uploadBatchId) => api.post('/t02/calculate', { uploadBatchId }),
+  getT02Data: (params) => api.get('/t02/data', { params }),
+  getT02Stats: () => api.get('/t02/stats'),
+  clearT02Data: () => api.delete('/t02/clear'),
+  getT02DataAsArray: (params) => api.get('/t02/data/array', { params }),
+  exportT02ToExcel: (uploadBatchId) => api.get(`/t02/export?uploadBatchId=${uploadBatchId}`, {
+    responseType: 'blob',
+  })
 };
 
 // Utility functions

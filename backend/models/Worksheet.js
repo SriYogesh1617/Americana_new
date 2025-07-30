@@ -105,6 +105,19 @@ class Worksheet {
     );
     return result.rows[0];
   }
+
+  static async findAll(limit = 1000, offset = 0) {
+    const result = await query(
+      `SELECT ws.*, w.workbook_name, f.original_name as file_name 
+       FROM worksheets ws 
+       JOIN workbooks w ON ws.workbook_id = w.id 
+       JOIN uploaded_files f ON w.file_id = f.id 
+       ORDER BY ws.created_at DESC 
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+    return result.rows;
+  }
 }
 
 module.exports = Worksheet; 

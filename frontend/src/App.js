@@ -11,6 +11,10 @@ import WorksheetDetail from './pages/WorksheetDetail';
 import DatabasePage from './pages/Database';
 import MonthlyView from './pages/MonthlyView';
 import DemandTemplate from './pages/DemandTemplate';
+import DemandCursor from './pages/DemandCursor';
+import CursorData from './pages/CursorData';
+import T01Data from './pages/T01Data';
+import T02Data from './pages/T02Data';
 
 const AppContainer = styled.div`
   display: flex;
@@ -46,6 +50,10 @@ function App() {
             <Route path="/database" element={<DatabasePage />} />
             <Route path="/monthly" element={<MonthlyView />} />
             <Route path="/demand" element={<DemandTemplate />} />
+            <Route path="/demand-cursor" element={<DemandCursor />} />
+            <Route path="/cursor-data" element={<CursorData />} />
+            <Route path="/t01-data" element={<T01Data />} />
+            <Route path="/t02-data" element={<T02Data />} />
           </Routes>
         </ContentArea>
       </MainContent>

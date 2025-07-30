@@ -9,6 +9,11 @@ const File = require('../models/File');
 const Workbook = require('../models/Workbook');
 const Worksheet = require('../models/Worksheet');
 const SheetData = require('../models/SheetData');
+const DemandCursor = require('../models/DemandCursor');
+const DemandCountryMasterCursor = require('../models/DemandCountryMasterCursor');
+const BaseScenarioConfigurationCursor = require('../models/BaseScenarioConfigurationCursor');
+const CapacityCursor = require('../models/CapacityCursor');
+const FreightStorageCostsCursor = require('../models/FreightStorageCostsCursor');
 const { query } = require('../config/database');
 
 // Configure multer for file uploads
@@ -55,15 +60,9 @@ const determineCellType = (value) => {
   }
   
   if (typeof value === 'number') {
-    // Only convert very specific Excel date serial numbers
-    // These are the actual date serial numbers for month headers
-    const knownDateSerialNumbers = [
-      44927, 44958, 44986, 45017, 45047, 45078, 45108, 45139, 45170, 45200, 45231, 45261, // 2023
-      45292, 45323, 45352, 45383, 45413, 45444, 45474, 45505, 45536, 45566, 45597, 45627, // 2024
-      45658, 45689, 45719, 45750, 45781, 45811, 45842, 45873, 45903, 45934, 45965, 45995  // 2025
-    ];
-    
-    if (knownDateSerialNumbers.includes(value)) {
+    // Check if it's an Excel date serial number (between 40000 and 50000 for modern dates)
+    // Excel date serial numbers for dates from 2009 onwards are typically in this range
+    if (value >= 40000 && value <= 50000 && value === Math.floor(value)) {
       return 'date';
     }
     return 'number';
@@ -91,6 +90,78 @@ const determineCellType = (value) => {
   return 'string';
 };
 
+// Helper function to determine which cursor table to use based on sheet name
+const getCursorTableForSheet = (sheetName, workbookName) => {
+  const normalizedSheetName = sheetName.toLowerCase().trim();
+  const normalizedWorkbookName = workbookName.toLowerCase().trim();
+  
+  // Check for Demand sheet
+  if (normalizedSheetName === 'demand' || 
+      normalizedWorkbookName.includes('demand') && !normalizedWorkbookName.includes('country') && !normalizedWorkbookName.includes('master')) {
+    return 'demand';
+  }
+  
+  // Check for Demand Country Master sheet
+  if (normalizedSheetName.includes('demand') && normalizedSheetName.includes('country') && normalizedSheetName.includes('master') ||
+      normalizedWorkbookName.includes('demand') && normalizedWorkbookName.includes('country') && normalizedWorkbookName.includes('master')) {
+    return 'demand_country_master';
+  }
+  
+  // Check for Base Scenario Configuration / Planning Time Period sheet
+  if (normalizedSheetName.includes('base') && normalizedSheetName.includes('scenario') && normalizedSheetName.includes('configuration') ||
+      normalizedSheetName.includes('planning') && normalizedSheetName.includes('time') && normalizedSheetName.includes('period') ||
+      normalizedWorkbookName.includes('base') && normalizedWorkbookName.includes('scenario') ||
+      normalizedWorkbookName.includes('planning') && normalizedWorkbookName.includes('time')) {
+    return 'base_scenario_configuration';
+  }
+  
+  // Check for Capacity sheet
+  if (normalizedSheetName.includes('capacity') ||
+      normalizedWorkbookName.includes('capacity')) {
+    return 'capacity';
+  }
+  
+  // Check for Freight Storage Costs sheet
+  if (normalizedSheetName.includes('freight') && normalizedSheetName.includes('storage') && normalizedSheetName.includes('costs') ||
+      normalizedSheetName.includes('freightrawdata') ||
+      normalizedWorkbookName.includes('freight') && normalizedWorkbookName.includes('storage') && normalizedWorkbookName.includes('costs') ||
+      normalizedWorkbookName.includes('freightrawdata')) {
+    return 'freight_storage_costs';
+  }
+  
+  return null; // Not a special sheet
+};
+
+// Helper function to insert data into the appropriate cursor table
+const insertCursorBatch = async (cursorDataBatch, cursorTableType) => {
+  if (cursorDataBatch.length === 0) return;
+
+  try {
+    switch (cursorTableType) {
+      case 'demand':
+        await DemandCursor.createBatch(cursorDataBatch);
+        break;
+      case 'demand_country_master':
+        await DemandCountryMasterCursor.createBatch(cursorDataBatch);
+        break;
+      case 'base_scenario_configuration':
+        await BaseScenarioConfigurationCursor.createBatch(cursorDataBatch);
+        break;
+      case 'capacity':
+        await CapacityCursor.createBatch(cursorDataBatch);
+        break;
+      case 'freight_storage_costs':
+        await FreightStorageCostsCursor.createBatch(cursorDataBatch);
+        break;
+      default:
+        console.warn(`Unknown cursor table type: ${cursorTableType}`);
+    }
+  } catch (error) {
+    console.error(`Error inserting into ${cursorTableType} cursor table:`, error);
+    throw error;
+  }
+};
+
 // Process Excel file and save to database
 const processExcelFile = async (filePath, fileRecord) => {
   try {
@@ -108,6 +179,9 @@ const processExcelFile = async (filePath, fileRecord) => {
 
     let totalRows = 0;
     let maxColumns = 0;
+
+    // Generate upload batch ID for cursor tables
+    const uploadBatchId = uuidv4();
 
     for (let i = 0; i < sheetNames.length; i++) {
       const sheetName = sheetNames[i];
@@ -133,9 +207,13 @@ const processExcelFile = async (filePath, fileRecord) => {
         has_headers: true // Assume first row contains headers
       });
 
+      // Check if this sheet should be stored in cursor tables
+      const cursorTableType = getCursorTableForSheet(sheetName, workbookRecord.workbook_name);
+      
       // Process sheet data in batches
       const batchSize = 1000;
       const cellDataBatch = [];
+      const cursorDataBatch = [];
 
       for (let row = 0; row <= range.e.r; row++) {
         for (let col = 0; col <= range.e.c; col++) {
@@ -155,29 +233,42 @@ const processExcelFile = async (filePath, fileRecord) => {
                 year: 'numeric',
                 month: 'short'
               });
-              console.log(`Converted Excel date ${cell.v} to ${cellValue} at row ${row}, col ${col}`);
-            }
-            
-            // Debug: Log some sample values to understand what's being processed
-            if (row <= 5 && col <= 10) {
-              console.log(`Row ${row}, Col ${col}: Value=${cellValue}, Type=${cellType}`);
+              console.log(`Converted Excel date ${cell.v} to ${cellValue}`);
             }
             
             const columnName = row === 0 ? String(cellValue) : `Column_${col}`;
 
-            cellDataBatch.push({
+            const cellData = {
               worksheet_id: worksheetRecord.id,
               row_index: row,
               column_index: col,
               column_name: columnName,
               cell_value: String(cellValue || ''),
               cell_type: cellType
-            });
+            };
+
+            cellDataBatch.push(cellData);
+
+            // If this is a special sheet, also add to cursor batch
+            if (cursorTableType) {
+              cursorDataBatch.push({
+                ...cellData,
+                workbook_id: workbookRecord.id,
+                formula: cell.f || null,
+                upload_batch_id: uploadBatchId
+              });
+            }
 
             // Insert batch when it reaches the limit
             if (cellDataBatch.length >= batchSize) {
               await SheetData.createBatch(cellDataBatch);
               cellDataBatch.length = 0; // Clear the batch
+            }
+
+            // Insert cursor batch when it reaches the limit
+            if (cursorDataBatch.length >= batchSize) {
+              await insertCursorBatch(cursorDataBatch, cursorTableType);
+              cursorDataBatch.length = 0; // Clear the batch
             }
           }
         }
@@ -186,6 +277,16 @@ const processExcelFile = async (filePath, fileRecord) => {
       // Insert remaining cells
       if (cellDataBatch.length > 0) {
         await SheetData.createBatch(cellDataBatch);
+      }
+
+      // Insert remaining cursor data
+      if (cursorDataBatch.length > 0) {
+        await insertCursorBatch(cursorDataBatch, cursorTableType);
+      }
+
+      // Log if this sheet was stored in cursor tables
+      if (cursorTableType) {
+        console.log(`📊 Stored sheet "${sheetName}" in ${cursorTableType} cursor table`);
       }
     }
 
@@ -228,6 +329,17 @@ const createDemandTemplateForUpload = async (fileRecord, workbookRecord) => {
 
     // Create demand template name
     const templateName = `Demand_Template_${year}_${month}`;
+    
+    // Check if a template already exists for this month/year
+    const existingTemplate = await query(
+      'SELECT * FROM demand_templates WHERE template_name = $1 AND upload_month = $2 AND upload_year = $3',
+      [templateName, month, year]
+    );
+    
+    if (existingTemplate.rows.length > 0) {
+      console.log(`Demand template already exists for ${month}/${year}, skipping creation`);
+      return existingTemplate.rows[0];
+    }
     
     // Get all workbooks from this upload
     const workbooksResult = await query(

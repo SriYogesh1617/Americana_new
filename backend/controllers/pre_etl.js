@@ -775,6 +775,373 @@ async function testWarehouseConsistency(zip, zipStructure, validationResults) {
 }
 
 
+// === Test Case 8 Step 1 | Filter demand data SKU codes ===
+async function filterDemandSKUs(zip, zipStructure, validationResults) {
+  console.log('\n🔍 Filtering demand data SKUs based on criteria…');
+  validationResults.demandFiltering = {
+    totalRowsProcessed: 0,
+    originFiltered: 0,
+    pdNpdFiltered: 0,
+    zeroDemandFiltered: 0,
+    finalFilteredSKUs: [],
+    filteredData: []
+  };
+
+  // Find Demand.xlsx file (not Demand_country_master.xlsx)
+  let demandFolderPath = null;
+  let fileName = null;
+  
+  for (const folderPath of Object.keys(zipStructure.folders)) {
+    const files = zipStructure.folders[folderPath].files;
+    const demandFile = files.find(f => f === 'Demand.xlsx' || f === 'Demand.xls');
+    if (demandFile) {
+      demandFolderPath = folderPath;
+      fileName = demandFile;
+      break;
+    }
+  }
+  
+  if (!demandFolderPath || !fileName) {
+    console.log('  ❌ Demand.xlsx file not found in ZIP structure');
+    return;
+  }
+  const entryName = `${demandFolderPath}/${fileName}`;
+
+  try {
+    const buffer = zip.readFile(entryName);
+    const workbook = xlsx.read(buffer, { type: 'buffer' });
+    let sheet = workbook.Sheets['Raw Demand'];
+    
+    if (!sheet) {
+      const nonMetaSheets = workbook.SheetNames.filter(
+        n => !n.toLowerCase().includes('meta')
+      );
+      if (nonMetaSheets.length > 0) {
+        const fallbackSheetName = nonMetaSheets[0];
+        sheet = workbook.Sheets[fallbackSheetName];
+        console.log(
+          `  ⚠️ Sheet "Raw Demand" not found in "${fileName}". Using "${fallbackSheetName}" instead.`
+        );
+      }
+    }
+
+    if (!sheet) {
+      console.log(`  ❌ Raw Demand sheet missing in ${fileName}`);
+      return;
+    }
+
+    const range = xlsx.utils.decode_range(sheet['!ref']);
+    const demandSchema = formatSchema.Demand.sheets['Raw Demand'];
+    const filterConfig = demandSchema.demandFiltering;
+    
+    // Get column indices
+    const originColIdx = demandSchema.headers.findIndex(h => h === 'Origin');
+    const pdNpdColIdx = demandSchema.headers.findIndex(h => h === 'PD/NPD');
+    const skuColIdx = demandSchema.headers.findIndex(h => h === filterConfig.skuColumn);
+    
+    if (originColIdx === -1 || pdNpdColIdx === -1 || skuColIdx === -1) {
+      console.log('  ❌ Required columns not found in Raw Demand sheet');
+      return;
+    }
+
+    console.log(`  ✅ Found columns - Origin: ${originColIdx}, PD/NPD: ${pdNpdColIdx}, SKU: ${skuColIdx}`);
+    console.log(`  ✅ Demand column range: ${filterConfig.demandColumnRange.startColumn} to ${filterConfig.demandColumnRange.endColumn}`);
+    console.log(`  ✅ Total range in sheet: rows ${demandSchema.headerRow} to ${range.e.r}`);
+
+    // Process each row starting from header row
+    for (let R = demandSchema.headerRow; R <= range.e.r; R++) {
+      validationResults.demandFiltering.totalRowsProcessed++;
+      
+      // Read row data
+      const originCell = sheet[xlsx.utils.encode_cell({ r: R, c: originColIdx })];
+      const pdNpdCell = sheet[xlsx.utils.encode_cell({ r: R, c: pdNpdColIdx })];
+      const skuCell = sheet[xlsx.utils.encode_cell({ r: R, c: skuColIdx })];
+      
+      const origin = originCell ? String(originCell.v) : '';
+      const pdNpd = pdNpdCell ? String(pdNpdCell.v) : '';
+      const sku = skuCell ? String(skuCell.v) : '';
+      
+      if (!sku) continue; // Skip rows without SKU
+      
+      // Debug: Track non-numeric SKUs
+      if (validationResults.demandFiltering.totalRowsProcessed <= 10 || !(/^\d+$/.test(sku))) {
+        if (!(/^\d+$/.test(sku))) {
+          console.log(`    Debug: Non-numeric SKU found: "${sku}" (Row ${R})`);
+        }
+      }
+      
+      // Apply filtering criteria
+      // Filter 1: Remove rows where Origin="Other"
+      if (filterConfig.originExcludeValues.includes(origin)) {
+        validationResults.demandFiltering.originFiltered++;
+        continue;
+      }
+      
+      // Filter 2: Remove rows where PD/NPD="NPD" (case sensitive)
+      if (filterConfig.pdNpdExcludeValues.includes(pdNpd)) {
+        validationResults.demandFiltering.pdNpdFiltered++;
+        continue;
+      }
+      
+      // Filter 3: Calculate total demand for first 12 months (convert negative to 0)
+      let totalDemand = 0;
+      const { startColumn, endColumn } = filterConfig.demandColumnRange;
+      let debugValues = [];
+      
+      for (let colIdx = startColumn; colIdx <= endColumn; colIdx++) {
+        const demandCell = sheet[xlsx.utils.encode_cell({ r: R, c: colIdx })];
+        if (demandCell && demandCell.v !== undefined && demandCell.v !== null) {
+          const monthDemand = Number(demandCell.v);
+          if (!isNaN(monthDemand)) {
+            const adjustedDemand = Math.max(0, monthDemand);
+            totalDemand += adjustedDemand;
+            debugValues.push(adjustedDemand);
+          }
+        }
+      }
+      
+      // Debug log for first few rows
+      if (validationResults.demandFiltering.totalRowsProcessed <= 3) {
+        console.log(`    Debug Row ${R}: SKU="${sku}", Origin="${origin}", PD/NPD="${pdNpd}", TotalDemand=${totalDemand}, Values=[${debugValues.slice(0,5).join(',')}...]`);
+      }
+      
+      // Filter 3: Remove SKUs with total demand = 0 (after negative conversion)
+      if (totalDemand === 0) {
+        validationResults.demandFiltering.zeroDemandFiltered++;
+        continue;
+      }
+      
+      // Row passed all filters - store it
+      const rowData = {
+        sku: sku,
+        origin: origin,
+        pdNpd: pdNpd,
+        totalDemand: totalDemand
+      };
+      
+      validationResults.demandFiltering.filteredData.push(rowData);
+      if (!validationResults.demandFiltering.finalFilteredSKUs.includes(sku)) {
+        validationResults.demandFiltering.finalFilteredSKUs.push(sku);
+      }
+    }
+
+    // Display summary
+    console.log(`  ✅ Demand filtering completed:`);
+    console.log(`     Total rows processed: ${validationResults.demandFiltering.totalRowsProcessed}`);
+    console.log(`     Filtered by Origin="Other": ${validationResults.demandFiltering.originFiltered}`);
+    console.log(`     Filtered by PD/NPD="NPD": ${validationResults.demandFiltering.pdNpdFiltered}`);
+    console.log(`     Filtered by zero demand (after negative conversion): ${validationResults.demandFiltering.zeroDemandFiltered}`);
+    console.log(`     Final filtered data rows: ${validationResults.demandFiltering.filteredData.length}`);
+    console.log(`     Unique SKUs (Unified codes) after filtering: ${validationResults.demandFiltering.finalFilteredSKUs.length}`);
+    
+    // Display first few filtered SKUs as sample
+    const sampleSKUs = validationResults.demandFiltering.finalFilteredSKUs.slice(0, 10);
+    console.log(`     Sample filtered SKUs: ${sampleSKUs.join(', ')}${validationResults.demandFiltering.finalFilteredSKUs.length > 10 ? '...' : ''}`);
+
+  } catch (err) {
+    console.log(`  ❌ Unable to process demand filtering: ${err.message}`);
+  }
+}
+
+
+// === Test Case 7 | Planning period month consistency validation ===
+async function testPlanningPeriodConsistency(zip, zipStructure, validationResults) {
+  console.log('\n🔍 Checking planning period month consistency across all relevant files…');
+  validationResults.monthMismatches = [];
+
+  // --- STEP 1: Extract reference months from Base_scenario_configuration Planning time period ---
+  let referenceMonths = [];
+  const baseConfigPath = Object.keys(zipStructure.folders)
+    .find(fp => zipStructure.folders[fp].files.some(f => f.startsWith('Base_scenario_configuration')));
+  
+  if (baseConfigPath) {
+    const fileName = zipStructure.folders[baseConfigPath].files.find(f => f.startsWith('Base_scenario_configuration'));
+    const entryName = `${baseConfigPath}/${fileName}`;
+    
+    try {
+      const buffer = zip.readFile(entryName);
+      const workbook = xlsx.read(buffer, { type: 'buffer' });
+      const sheet = workbook.Sheets['Planning time period'];
+      
+      if (sheet) {
+        const range = xlsx.utils.decode_range(sheet['!ref']);
+        for (let R = 1; R <= range.e.r; R++) { // Start from row 1 (0-based), skip header
+          const cellRef = xlsx.utils.encode_cell({ r: R, c: 0 }); // First column
+          const cell = sheet[cellRef];
+          if (cell && cell.v && String(cell.v)) {
+            referenceMonths.push(String(cell.v));
+          }
+        }
+        console.log(`  ✅ Reference months from planning period: ${referenceMonths.join(', ')}`);
+      }
+    } catch (err) {
+      console.log(`  ❌ Unable to read planning period: ${err.message}`);
+      return;
+    }
+  }
+
+  if (!referenceMonths.length) {
+    console.log('  ⚠️  No reference months found in planning period. Skipping test.');
+    return;
+  }
+
+  // --- STEP 2: Identify relevant sheets with month validation patterns ---
+  const monthFiles = [];
+  for (const [fileBase, fileSchema] of Object.entries(formatSchema)) {
+    for (const [sheetName, sheetSchema] of Object.entries(fileSchema.sheets)) {
+      if (sheetSchema.monthValidationPattern && sheetSchema.monthValidationPattern !== 'reference_source') {
+        monthFiles.push({
+          fileBase,
+          sheetName,
+          headerRow: sheetSchema.headerRow,
+          headers: sheetSchema.headers,
+          monthValidationPattern: sheetSchema.monthValidationPattern,
+          monthColumns: sheetSchema.monthColumns || [],
+          monthHeaderRange: sheetSchema.monthHeaderRange || null,
+          monthHeaderPattern: sheetSchema.monthHeaderPattern || null,
+          monthExcelHeaders: sheetSchema.monthExcelHeaders || []
+        });
+      }
+    }
+  }
+
+  if (!monthFiles.length) {
+    console.log('  ⚠️  No month validation patterns found in any schema. Skipping test.');
+    return;
+  }
+
+  const allMonthsSet = new Set(referenceMonths);
+  const monthsByFile = {};
+
+  // --- STEP 3: Extract months from each file based on pattern ---
+  for (const fileDef of monthFiles) {
+    const { fileBase, sheetName, headerRow, monthValidationPattern } = fileDef;
+
+    // Find actual file path in zip
+    const folderPath = Object.keys(zipStructure.folders)
+      .find(fp => zipStructure.folders[fp].files.some(f => f.startsWith(fileBase)));
+    if (!folderPath) continue;
+    const fileName = zipStructure.folders[folderPath].files.find(f => f.startsWith(fileBase));
+    const entryName = `${folderPath}/${fileName}`;
+
+    try {
+      const buffer = zip.readFile(entryName);
+      const workbook = xlsx.read(buffer, { type: 'buffer' });
+      let sheet = workbook.Sheets[sheetName];
+      
+      if (!sheet) {
+        const nonMetaSheets = workbook.SheetNames.filter(
+          n => !n.toLowerCase().includes('meta')
+        );
+        if (nonMetaSheets.length > 0) {
+          const fallbackSheetName = nonMetaSheets[0];
+          sheet = workbook.Sheets[fallbackSheetName];
+          console.log(
+            `  ⚠️ Sheet "${sheetName}" not found in "${fileName}". Using "${fallbackSheetName}" instead.`
+          );
+        }
+      }
+
+      if (!sheet) {
+        console.log(`  ❌ Sheet ${sheetName} missing in ${fileName}`);
+        continue;
+      }
+
+      const months = new Set();
+      const range = xlsx.utils.decode_range(sheet['!ref']);
+
+      if (monthValidationPattern === 'column_value') {
+        // Extract months from column values
+        const monthColumnIndices = fileDef.monthColumns.map(colName =>
+          fileDef.headers.findIndex(h => h === colName)
+        ).filter(idx => idx >= 0);
+
+        monthColumnIndices.forEach(colIdx => {
+          for (let R = headerRow; R <= range.e.r; R++) {
+            const cellRef = xlsx.utils.encode_cell({ r: R, c: colIdx });
+            const cell = sheet[cellRef];
+            if (cell && cell.v && String(cell.v)) {
+              months.add(String(cell.v));
+            }
+          }
+        });
+
+      } else if (monthValidationPattern === 'header_numeric') {
+        // Extract months from numeric headers using dynamic range
+        if (fileDef.monthHeaderRange) {
+          const { startColumn, endColumn } = fileDef.monthHeaderRange;
+          for (let colIdx = startColumn; colIdx <= endColumn; colIdx++) {
+            if (colIdx < fileDef.headers.length) {
+              const header = fileDef.headers[colIdx];
+              if (header && fileDef.monthHeaderPattern === 'numeric' && /^\d+$/.test(header)) {
+                months.add(header);
+              }
+            }
+          }
+        }
+
+      } else if (monthValidationPattern === 'header_excel_date') {
+        // Convert Excel date headers to month numbers
+        fileDef.monthExcelHeaders.forEach(excelDate => {
+          // Excel date serial number to month conversion
+          // Excel epoch starts at 1900-01-01, but Excel incorrectly treats 1900 as leap year
+          const excelEpoch = new Date(1900, 0, 1);
+          const daysSinceEpoch = parseInt(excelDate) - 2; // Adjust for Excel's leap year bug
+          const actualDate = new Date(excelEpoch.getTime() + daysSinceEpoch * 24 * 60 * 60 * 1000);
+          const monthNumber = String(actualDate.getMonth() + 1); // Convert to 1-based month
+          months.add(monthNumber);
+        });
+      }
+
+      monthsByFile[`${fileBase}:${sheetName}`] = months;
+
+    } catch (err) {
+      console.log(`  ❌ Unable to read ${fileName} for months: ${err.message}`);
+    }
+  }
+
+  // Use only reference months for validation (no outer join)
+  const requiredMonths = referenceMonths;
+
+  // --- STEP 4: Build matrix and validate consistency ---
+  const fileKeys = Object.keys(monthsByFile);
+  
+  // Build validation results - only check for required months
+  requiredMonths.forEach(month => {
+    fileKeys.forEach(key => {
+      const hasMonth = monthsByFile[key].has(month);
+      if (!hasMonth) {
+        validationResults.monthMismatches.push({
+          month: month,
+          fileSheet: key,
+          message: `Please check ${key} for missing month "${month}"`
+        });
+      }
+    });
+  });
+
+  // --- STEP 5: Build transposed matrix (Files as rows, Required Months as columns) ---
+  const transposedMatrix = fileKeys.map(fileKey => {
+    const row = { 'File:Sheet': fileKey };
+    requiredMonths.forEach(month => {
+      row[month] = monthsByFile[fileKey].has(month) ? 'TRUE' : 'FALSE';
+    });
+    return row;
+  });
+
+  // Display transposed matrix
+  console.log('\nMonth consistency matrix (Files as rows, Months as columns):');
+  console.table(transposedMatrix);
+
+  if (validationResults.monthMismatches.length) {
+    console.log('\n=== Month Mismatches ===');
+    validationResults.monthMismatches.forEach(m => console.log(`  ❌ ${m.message}`));
+  } else {
+    console.log('  ✅ All required months present in all relevant sheets.');
+  }
+}
+
+
 // === Main ===
 async function main() {
   try {
@@ -806,6 +1173,12 @@ async function main() {
 
     // Test Case 6: Warehouse names are consistent across all input files
     await testWarehouseConsistency(zip, structure, validation);
+
+    // Test Case 7: Planning period month consistency validation
+    await testPlanningPeriodConsistency(zip, structure, validation);
+
+    // Test Case 8 Step 1: Filter demand data SKU codes
+    await filterDemandSKUs(zip, structure, validation);
 
     const summary = generateValidationSummary(validation, structure);
 
@@ -854,6 +1227,26 @@ async function main() {
       validation.warehouseMismatches.forEach(w =>
         console.log(`  ❌ ${w.message}`)
       );
+    }
+
+    // ===== Month Consistency Validation Summary =====
+    if (validation.monthMismatches && validation.monthMismatches.length > 0) {
+      console.log('\n=== Month Consistency Validation ===');
+      console.log(`Total month mismatches: ${validation.monthMismatches.length}`);
+      validation.monthMismatches.forEach(m =>
+        console.log(`  ❌ ${m.message}`)
+      );
+    }
+
+    // ===== Demand Filtering Summary =====
+    if (validation.demandFiltering) {
+      console.log('\n=== Demand SKU Filtering Summary ===');
+      console.log(`Total rows processed: ${validation.demandFiltering.totalRowsProcessed}`);
+      console.log(`Filtered by Origin="Other": ${validation.demandFiltering.originFiltered}`);
+      console.log(`Filtered by PD/NPD="NPD": ${validation.demandFiltering.pdNpdFiltered}`);
+      console.log(`Filtered by zero demand (after negative conversion): ${validation.demandFiltering.zeroDemandFiltered}`);
+      console.log(`Final filtered data rows: ${validation.demandFiltering.filteredData.length}`);
+      console.log(`Unique SKUs (Unified codes) after filtering: ${validation.demandFiltering.finalFilteredSKUs.length}`);
     }
 
     process.exit(summary.passed ? 0 : 1);

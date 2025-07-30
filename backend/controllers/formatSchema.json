@@ -22,7 +22,8 @@
           "Month",
           "Year"
         ],
-        "columnCount": 3
+        "columnCount": 3,
+        "monthValidationPattern": "reference_source"
       },
       "Factory-Line Availability": {
         "sheetName": "Factory-Line Availability",
@@ -36,7 +37,9 @@
           "Min Utilization",
           "Max utilization"
         ],
-        "columnCount": 7
+        "columnCount": 7,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Line-SKU Production": {
         "sheetName": "Line-SKU Production",
@@ -49,7 +52,9 @@
           "Capacity (Units/hour)",
           "Production Allowed"
         ],
-        "columnCount": 6
+        "columnCount": 6,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Infinite Line Capacity": {
         "sheetName": "Infinite Line Capacity",
@@ -69,7 +74,9 @@
           "Parameter",
           "Value"
         ],
-        "columnCount": 4
+        "columnCount": 4,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Handling Unmet": {
         "sheetName": "Handling Unmet",
@@ -115,7 +122,10 @@
           "15",
           "16"
         ],
-        "columnCount": 28
+        "columnCount": 28,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 4, "endColumn": 15},
+        "monthHeaderPattern": "numeric"
       },
       "Trimming Inventory": {
         "sheetName": "Trimming Inventory",
@@ -140,7 +150,9 @@
           "Description",
           "Month"
         ],
-        "columnCount": 5
+        "columnCount": 5,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Export Restrictions": {
         "sheetName": "Export Restrictions",
@@ -153,7 +165,9 @@
           "Destination Country"
         ],
         "columnCount": 5,
-        "factoryValueColumns": ["Origin Factory"]
+        "factoryValueColumns": ["Origin Factory"],
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Trimming Transfer": {
         "sheetName": "Trimming Transfer",
@@ -207,7 +221,10 @@
           "15",
           "16"
         ],
-        "columnCount": 14
+        "columnCount": 14,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 4, "endColumn": 15},
+        "monthHeaderPattern": "numeric"
       },
       "Contract Labor Cost": {
         "sheetName": "Contract Labor Cost",
@@ -228,7 +245,10 @@
           "15",
           "16"
         ],
-        "columnCount": 14
+        "columnCount": 14,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 4, "endColumn": 15},
+        "monthHeaderPattern": "numeric"
       },
       "Overtime Labor Cost": {
         "sheetName": "Overtime Labor Cost",
@@ -249,7 +269,10 @@
           "15",
           "16"
         ],
-        "columnCount": 14
+        "columnCount": 14,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 4, "endColumn": 15},
+        "monthHeaderPattern": "numeric"
       },
       "Energy Cost": {
         "sheetName": "Energy Cost",
@@ -270,7 +293,10 @@
           "15",
           "16"
         ],
-        "columnCount": 14
+        "columnCount": 14,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 4, "endColumn": 15},
+        "monthHeaderPattern": "numeric"
       }
     }
   },
@@ -370,7 +396,9 @@
           "Min Utilization",
           "Max utilization"
         ],
-        "columnCount": 7
+        "columnCount": 7,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Line-SKU Production": {
         "sheetName": "Line-SKU Production",
@@ -383,7 +411,9 @@
           "Capacity (Units/hour)",
           "Production Allowed"
         ],
-        "columnCount": 6
+        "columnCount": 6,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Infinite Line Capacity": {
         "sheetName": "Infinite Line Capacity",
@@ -403,7 +433,9 @@
           "Parameter",
           "Value"
         ],
-        "columnCount": 4
+        "columnCount": 4,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Handling Unmet": {
         "sheetName": "Handling Unmet",
@@ -411,9 +443,12 @@
         "headers": [
           "SKU Code",
           "SKU Description",
+          "Month",
           "Always produce"
         ],
-        "columnCount": 3
+        "columnCount": 4,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Trimming Inventory": {
         "sheetName": "Trimming Inventory",
@@ -460,7 +495,10 @@
           "15",
           "16"
         ],
-        "columnCount": 28
+        "columnCount": 28,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 4, "endColumn": 15},
+        "monthHeaderPattern": "numeric"
       },
       "Export Restrictions": {
         "sheetName": "Export Restrictions",
@@ -473,7 +511,9 @@
           "Destination Country"
         ],
         "columnCount": 5,
-        "factoryValueColumns": ["Origin Factory"]
+        "factoryValueColumns": ["Origin Factory"],
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "Trimming Transfer": {
         "sheetName": "Trimming Transfer",
@@ -497,7 +537,9 @@
           "Description",
           "Month"
         ],
-        "columnCount": 5
+        "columnCount": 5,
+        "monthValidationPattern": "column_value",
+        "monthColumns": ["Month"]
       },
       "RM Prices": {
         "sheetName": "RM Prices",
@@ -541,7 +583,10 @@
           "11",
           "12"
         ],
-        "columnCount": 14
+        "columnCount": 14,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 5, "endColumn": 16},
+        "monthHeaderPattern": "numeric"
       },
       "Overtime Labor Cost": {
         "sheetName": "Overtime Labor Cost",
@@ -562,7 +607,10 @@
           "11",
           "12"
         ],
-        "columnCount": 14
+        "columnCount": 14,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 5, "endColumn": 16},
+        "monthHeaderPattern": "numeric"
       },
       "Contract Labor Cost": {
         "sheetName": "Contract Labor Cost",
@@ -583,7 +631,10 @@
           "11",
           "12"
         ],
-        "columnCount": 14
+        "columnCount": 14,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 5, "endColumn": 16},
+        "monthHeaderPattern": "numeric"
       },
       "Energy Cost": {
         "sheetName": "Energy Cost",
@@ -604,7 +655,10 @@
           "11",
           "12"
         ],
-        "columnCount": 14
+        "columnCount": 14,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 5, "endColumn": 16},
+        "monthHeaderPattern": "numeric"
       }
     }
   },
@@ -849,7 +903,10 @@
           "11",
           "12"
         ],
-        "columnCount": 17
+        "columnCount": 17,
+        "monthValidationPattern": "header_numeric",
+        "monthHeaderRange": {"startColumn": 5, "endColumn": 16},
+        "monthHeaderPattern": "numeric"
       }      
     }
   },
@@ -908,7 +965,15 @@
           "46327"          
         ],
         "columnCount": 27,
-        "countryValueColumns": ["Market"]
+        "countryValueColumns": ["Market"],
+        "monthValidationPattern": "header_excel_date",
+        "monthExcelHeaders": ["45809", "45839", "45870", "45901", "45931", "45962", "45992", "46023", "46054", "46082", "46113", "46143", "46174", "46204", "46235", "46266", "46296", "46327"],
+        "demandFiltering": {
+          "originExcludeValues": ["Other"],
+          "pdNpdExcludeValues": ["NPD"],
+          "demandColumnRange": {"startColumn": 9, "endColumn": 20},
+          "skuColumn": "Unified code"
+        }
       }
     }
   },

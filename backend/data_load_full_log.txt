@@ -1,0 +1,1217 @@
+🚀 Starting InputDataLoadController...
+
+✅ Connected to postgres database
+ℹ️ Database americana_db already exists
+✅ Connected to americana_db
+
+📋 STEP 1: Loading header.xlsx into database...
+  Found 41 file configurations in header.xlsx
+  ✅ Created table: header_configuration
+  ✅ Inserted 41 configurations into database
+  ✅ Verified: 41 rows in header_configuration
+
+📁 STEP 2: Loading all data files using header configuration...
+  Found 41 file configurations to process
+
+📄 Processing: SKU Master/Item_master_NFC.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   🧪 Header Row Raw Data: [
+  ' Creation Date',
+  'Created By',
+  ' Organization Name',
+  'Org Code',
+  ' Item Code',
+  'Old Item Code',
+  ' Description',
+  'Arabic Description',
+  ' Primary Uom',
+  ' Item Status',
+  ' User Item Type',
+  'Weight UOM',
+  'Unit Weight',
+  'Kwt PL Segment',
+  'MFG/TRD',
+  ' Om Type',
+  ' Om Brand',
+  ' Om Flavour',
+  ' Om Price Point',
+  ' Om Packing',
+  ' Inv Main Category',
+  ' Inv Sub Category',
+  ' Inv Sub Category2',
+  'OPM Main Category',
+  'OPM Sub Category',
+  ' OPM Sub Category2',
+  ' Gfi Item Division',
+  ' Gfi Brand Type',
+  ' Gfi Brand Group',
+  ' Gfi Brand',
+  ' Gfi Product Group',
+  ' Gfi Product Detail Group',
+  ' Gfi Product Sub Type',
+  ' Gfi Item Size',
+  ' Gfi Pieces Per Carton',
+  ' Gfi Lid Type',
+  ' Gfi Fcl Qty',
+  ' Gfi Item Market',
+  ' Gfi Item Type',
+  'Pur Main Category',
+  'Pur Sub Category',
+  'Pur Sub Category 2',
+  'LCM Enabled',
+  ' Expense Account',
+  ' Encumbrance Account',
+  ' Cost Of Sales Account',
+  ' Sales Account',
+  ' Inventory Item',
+  ' Revision Control',
+  ' Stockable',
+  ' Reservable',
+  ' Transactable',
+  ' Shelf Life Control',
+  ' Shelf Life Days',
+  ' Lot Control',
+  ' Lot Divisible',
+  ' Costing Enabled',
+  ' Inventory Asset Value',
+  ' Purchased',
+  ' Use Approved Supplier',
+  ' Allow Item Description Update',
+  ' Receipt Required',
+  ' Source Type',
+  ' Source Organization',
+  ' Safety Stock Method',
+  ' Source Subinventory',
+  ' Planning Method',
+  ' Customer Ordered',
+  ' Customer Orders Enabled',
+  ' Shippable',
+  ' Internal Ordered',
+  ' Oe Transactable',
+  ' Default Shipping Org',
+  ' Returnable',
+  ' Invoiceable Item',
+  ' Invoice Enabled',
+  'HS Code (GFI)',
+  'HS Code (GFC)',
+  ' Secondary Uom'
+]
+   Found 79 columns and 59776 data rows
+   📥 Inserted 59776/59776 rows
+   ✅ Successfully loaded into table: item_master_nfc
+
+📄 Processing: SKU Master/Item_master_KFC.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   🧪 Header Row Raw Data: [
+  ' Creation Date',
+  'Created By',
+  ' Organization Name',
+  'Org Code',
+  ' Item Code',
+  'Old Item Code',
+  ' Description',
+  'Arabic Description',
+  ' Primary Uom',
+  ' Item Status',
+  ' User Item Type',
+  'Weight UOM',
+  'Unit Weight',
+  'Kwt PL Segment',
+  'MFG/TRD',
+  ' Om Type',
+  ' Om Brand',
+  ' Om Flavour',
+  ' Om Price Point',
+  ' Om Packing',
+  ' Inv Main Category',
+  ' Inv Sub Category',
+  ' Inv Sub Category2',
+  'OPM Main Category',
+  'OPM Sub Category',
+  ' OPM Sub Category2',
+  ' Gfi Item Division',
+  ' Gfi Brand Type',
+  ' Gfi Brand Group',
+  ' Gfi Brand',
+  ' Gfi Product Group',
+  ' Gfi Product Detail Group',
+  ' Gfi Product Sub Type',
+  ' Gfi Item Size',
+  ' Gfi Pieces Per Carton',
+  ' Gfi Lid Type',
+  ' Gfi Fcl Qty',
+  ' Gfi Item Market',
+  ' Gfi Item Type',
+  'Pur Main Category',
+  'Pur Sub Category',
+  'Pur Sub Category 2',
+  'LCM Enabled',
+  ' Expense Account',
+  ' Encumbrance Account',
+  ' Cost Of Sales Account',
+  ' Sales Account',
+  ' Inventory Item',
+  ' Revision Control',
+  ' Stockable',
+  ' Reservable',
+  ' Transactable',
+  ' Shelf Life Control',
+  ' Shelf Life Days',
+  ' Lot Control',
+  ' Lot Divisible',
+  ' Costing Enabled',
+  ' Inventory Asset Value',
+  ' Purchased',
+  ' Use Approved Supplier',
+  ' Allow Item Description Update',
+  ' Receipt Required',
+  ' Source Type',
+  ' Source Organization',
+  ' Safety Stock Method',
+  ' Source Subinventory',
+  ' Planning Method',
+  ' Customer Ordered',
+  ' Customer Orders Enabled',
+  ' Shippable',
+  ' Internal Ordered',
+  ' Oe Transactable',
+  ' Default Shipping Org',
+  ' Returnable',
+  ' Invoiceable Item',
+  ' Invoice Enabled',
+  'HS Code (GFI)',
+  'HS Code (GFC)',
+  ' Secondary Uom'
+]
+   Found 79 columns and 29235 data rows
+   📥 Inserted 29235/29235 rows
+   ✅ Successfully loaded into table: item_master_kfc
+
+📄 Processing: SKU Master/Item_master_GFC.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   🧪 Header Row Raw Data: [
+  ' Creation Date',
+  'Created By',
+  ' Organization Name',
+  'Org Code',
+  ' Item Code',
+  'Old Item Code',
+  ' Description',
+  'Arabic Description',
+  ' Primary Uom',
+  ' Item Status',
+  ' User Item Type',
+  'Weight UOM',
+  'Unit Weight',
+  'Kwt PL Segment',
+  'MFG/TRD',
+  ' Om Type',
+  ' Om Brand',
+  ' Om Flavour',
+  ' Om Price Point',
+  ' Om Packing',
+  ' Inv Main Category',
+  ' Inv Sub Category',
+  ' Inv Sub Category2',
+  'OPM Main Category',
+  'OPM Sub Category',
+  ' OPM Sub Category2',
+  ' Gfi Item Division',
+  ' Gfi Brand Type',
+  ' Gfi Brand Group',
+  ' Gfi Brand',
+  ' Gfi Product Group',
+  ' Gfi Product Detail Group',
+  ' Gfi Product Sub Type',
+  ' Gfi Item Size',
+  ' Gfi Pieces Per Carton',
+  ' Gfi Lid Type',
+  ' Gfi Fcl Qty',
+  ' Gfi Item Market',
+  ' Gfi Item Type',
+  'Pur Main Category',
+  'Pur Sub Category',
+  'Pur Sub Category 2',
+  'LCM Enabled',
+  ' Expense Account',
+  ' Encumbrance Account',
+  ' Cost Of Sales Account',
+  ' Sales Account',
+  ' Inventory Item',
+  ' Revision Control',
+  ' Stockable',
+  ' Reservable',
+  ' Transactable',
+  ' Shelf Life Control',
+  ' Shelf Life Days',
+  ' Lot Control',
+  ' Lot Divisible',
+  ' Costing Enabled',
+  ' Inventory Asset Value',
+  ' Purchased',
+  ' Use Approved Supplier',
+  ' Allow Item Description Update',
+  ' Receipt Required',
+  ' Source Type',
+  ' Source Organization',
+  ' Safety Stock Method',
+  ' Source Subinventory',
+  ' Planning Method',
+  ' Customer Ordered',
+  ' Customer Orders Enabled',
+  ' Shippable',
+  ' Internal Ordered',
+  ' Oe Transactable',
+  ' Default Shipping Org',
+  ' Returnable',
+  ' Invoiceable Item',
+  ' Invoice Enabled',
+  'HS Code (GFI)',
+  'HS Code (GFC)',
+  ' Secondary Uom'
+]
+   Found 79 columns and 11093 data rows
+   📥 Inserted 11093/11093 rows
+   ✅ Successfully loaded into table: item_master_gfc
+
+📄 Processing: Factory_Line_Master.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   ❌ File not found: /home/sumedha/final_final/data/Factory_Line_Master.xlsx
+
+📄 Processing: Demand_country_master.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   🧪 Header Row Raw Data: [
+  'Country',
+  'Market',
+  'Country Name (Raw demand)',
+  'Food Service',
+  null,
+  null,
+  null
+]
+   Found 7 columns and 25 data rows
+   📥 Inserted 25/25 rows
+   ✅ Successfully loaded into table: demand_country_master
+
+📄 Processing: SKU-Line Mapping/Capacity.xlsx
+   Sheet: Item master | Header Row: 2
+   🧪 Header Row Raw Data: [
+  'No.',
+  'Item',
+  'Disc',
+  ' Primary Uom',
+  'Weight UOM',
+  'Category',
+  'flow wrap',
+  'Trimming Maker / Trimming Consumer',
+  null,
+  'KSA',
+  'Kuwait',
+  'UAE FS',
+  null,
+  'requiredOS_KSA',
+  'requiredOS_Kuwait',
+  'requiredOS_UAE FS',
+  null,
+  'NFC',
+  'GFC',
+  'KFC',
+  null,
+  'C1',
+  'C2',
+  'C3',
+  'C4',
+  'C5',
+  'DSI',
+  'New Line 1',
+  'G64',
+  'G76',
+  'M7',
+  'G4',
+  'D',
+  'F',
+  'P',
+  'T',
+  'Manual NFC',
+  'TSM',
+  'O1',
+  'O2',
+  'FP',
+  'New Line 2',
+  'B1',
+  'B2',
+  'GFC_DSI',
+  'New Line 3',
+  'Rivo',
+  'Ultra Formax',
+  'Glazed',
+  'Tiromat',
+  'Manual KFC',
+  'KFC_TSM',
+  'New Line 4',
+  'New Line 2',
+  'New Line 1 + 2',
+  'New Outputs',
+  'New Line 12',
+  null
+]
+   Found 58 columns and 926 data rows
+   ❌ Error: column "new_line_2" specified more than once
+
+📄 Processing: Bill of Materials/GFC_BOM.xlsx
+   Sheet: Current system | Header Row: 8
+   🧪 Header Row Raw Data: [
+  'Formula',
+  'GFM4001370106',
+  'Status ',
+  'Approved for General Use',
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+]
+   Found 12 columns and 4894 data rows
+   📥 Inserted 4894/4894 rows
+   ✅ Successfully loaded into table: gfc_bom_current_system
+
+📄 Processing: Bill of Materials/KFC_BOM.xlsx
+   Sheet: KPF | Header Row: 8
+   🧪 Header Row Raw Data: [
+  'Formula',
+  'KPF4001100212',
+  'Status ',
+  'Approved for General Use',
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+]
+   Found 12 columns and 7937 data rows
+   📥 Inserted 7937/7937 rows
+   ✅ Successfully loaded into table: kfc_bom_kpf
+
+📄 Processing: Bill of Materials/NF1_BOM.xlsx
+   Sheet: NF1 | Header Row: 8
+   🧪 Header Row Raw Data: [
+  'Formula',
+  'NF13001330166',
+  'Status ',
+  'Approved for General Use',
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+]
+   Found 12 columns and 7005 data rows
+   📥 Inserted 7005/7005 rows
+   ✅ Successfully loaded into table: nf1_bom_nf1
+
+📄 Processing: Bill of Materials/NF2_BOM.xlsx
+   Sheet: NF2 | Header Row: 8
+   🧪 Header Row Raw Data: [
+  'Formula',
+  'NF24001371702',
+  'Status ',
+  'Approved for General Use',
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+]
+   Found 12 columns and 8967 data rows
+   📥 Inserted 8967/8967 rows
+   ✅ Successfully loaded into table: nf2_bom_nf2
+
+📄 Processing: Bill of Materials/Chicken_trimming_recipe.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   🧪 Header Row Raw Data: [
+  'FactCode',
+  'Item Code',
+  'Description',
+  'Qty',
+  'UOM',
+  'Line Type',
+  'Ingredient',
+  'Description.1',
+  'UOM.1',
+  'Qty.1'
+]
+   Found 10 columns and 12 data rows
+   📥 Inserted 12/12 rows
+   ✅ Successfully loaded into table: chicken_trimming_recipe
+
+📄 Processing: Cost Data/Factory_routing.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   🧪 Header Row Raw Data: [
+  'Factory',              'Item Code',
+  'Item Description',     'Crew FG',
+  'Crew SFG',             'Crew Total',
+  'Power Usage FG (kVA)', 'Power Usage SFG (kVA)',
+  'Power Usage Total',    null,
+  null,                   null,
+  null,                   null,
+  null,                   null,
+  null,                   null,
+  null
+]
+   Found 19 columns and 205 data rows
+   📥 Inserted 205/205 rows
+   ✅ Successfully loaded into table: factory_routing
+
+📄 Processing: Cost Data/Labor_cost_details_by_factory.xlsx
+   Sheet: Sheet1 | Header Row: 2
+   🧪 Header Row Raw Data: [ 'Model input', 'Frequency', 'SAR', 'KD', 'AED', null, null, null ]
+   Found 8 columns and 5 data rows
+   📥 Inserted 5/5 rows
+   ✅ Successfully loaded into table: labor_cost_details_by_factory
+
+📄 Processing: Demand and OS/Demand.xlsx
+   Sheet: Raw Demand | Header Row: 1
+   🧪 Header Row Raw Data: [
+  'Geography',     'Market',      'Market - System',
+  'PD/NPD',        'Origin',      'Unified code',
+  'Code',          'Description', 'UM',
+  '2025-06-01',    '2025-07-01',  '2025-08-01',
+  '2025-09-01',    '2025-10-01',  '2025-11-01',
+  '2025-12-01',    '2026-01-01',  '2026-02-01',
+  '2026-03-01',    '2026-04-01',  '2026-05-01',
+  '2026-06-01',    '2026-07-01',  '2026-08-01',
+  '2026-09-01',    '2026-10-01',  '2026-11-01',
+  null,            null,          null,
+  'Do not delete', null,          null,
+  null,            null
+]
+   Found 35 columns and 1530 data rows
+   📥 Inserted 1530/1530 rows
+   ✅ Successfully loaded into table: demand_raw_demand
+
+📄 Processing: Demand and OS/GFC_OS.xlsx
+   Sheet: Available_Current_Stock_030123 | Header Row: 11
+   🧪 Header Row Raw Data: [
+  'Item Number',
+  'Old Item',
+  'Description',
+  'Arabic Desc',
+  null,
+  'Unit Of Measure',
+  'Quantity On Hand',
+  'Available to Reserve QTY Org Level',
+  'Reserved QTY Org Level',
+  'Receiving Area Quantity',
+  'Inventory Org',
+  'SubInventory'
+]
+   Found 12 columns and 1527 data rows
+   📥 Inserted 1527/1527 rows
+   ✅ Successfully loaded into table: gfc_os_available_current_stock_030123
+
+📄 Processing: Demand and OS/KFC_OS.xlsx
+   Sheet: KPL | Header Row: 11
+   🧪 Header Row Raw Data: [
+  'Item Number',
+  'Old Item',
+  'Description',
+  'Arabic Desc',
+  null,
+  'Unit Of Measure',
+  'Quantity On Hand',
+  'Available to Reserve QTY Org Level',
+  'Reserved QTY Org Level',
+  'Receiving Area Quantity',
+  'Inventory Org',
+  'SubInventory'
+]
+   Found 12 columns and 459 data rows
+   📥 Inserted 459/459 rows
+   ✅ Successfully loaded into table: kfc_os_kpl
+
+📄 Processing: Demand and OS/KFC_OS.xlsx
+   Sheet: KPE | Header Row: 11
+   🧪 Header Row Raw Data: [
+  'Item Number',
+  'Old Item',
+  'Description',
+  'Arabic Desc',
+  null,
+  'Unit Of Measure',
+  'Quantity On Hand',
+  'Available to Reserve QTY Org Level',
+  'Reserved QTY Org Level',
+  'Receiving Area Quantity',
+  'Inventory Org',
+  'SubInventory'
+]
+   Found 12 columns and 97 data rows
+   📥 Inserted 97/97 rows
+   ✅ Successfully loaded into table: kfc_os_kpe
+
+📄 Processing: Demand and OS/NFC_OS.xlsx
+   Sheet: Available_Current_Stock_020123 | Header Row: 11
+   🧪 Header Row Raw Data: [
+  'Item Number',
+  'Old Item',
+  'Description',
+  'Arabic Desc',
+  null,
+  'Unit Of Measure',
+  'Quantity On Hand',
+  'Available to Reserve QTY Org Level',
+  'Reserved QTY Org Level',
+  'Receiving Area Quantity',
+  'Inventory Org',
+  'SubInventory'
+]
+   Found 12 columns and 10459 data rows
+   📥 Inserted 10459/10459 rows
+   ✅ Successfully loaded into table: nfc_os_available_current_stock_020123
+
+📄 Processing: Cost Data/Landed_raw_material_cost.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   🧪 Header Row Raw Data: [
+  'Factory',            'RM SKU Code',
+  'RM SKU Description', 'UOM',
+  'Currency',           '1',
+  '2',                  '3',
+  '4',                  '5',
+  '6',                  '7',
+  '8',                  '9',
+  '10',                 '11',
+  '12',                 null
+]
+   Found 18 columns and 249 data rows
+   📥 Inserted 249/249 rows
+   ✅ Successfully loaded into table: landed_raw_material_cost
+
+📄 Processing: Cost Data/Customs.xlsx
+   Sheet: Sheet1 | Header Row: 1
+   🧪 Header Row Raw Data: [ 'Factory', 'Item Code', 'Description', 'Overhead (USD)', null ]
+   Found 5 columns and 299 data rows
+   📥 Inserted 299/299 rows
+   ✅ Successfully loaded into table: customs
+
+📄 Processing: Cost Data/RM_transfer_costs.xlsx
+   Sheet: RM Transfer | Header Row: 4
+   🧪 Header Row Raw Data: [
+  null,
+  'OrigFact',
+  'DestFact',
+  'TSKUCode',
+  'Freight Cost/Kg',
+  'Packaging Cost/Kg',
+  'FrtRate/kg ',
+  null,
+  null
+]
+   Found 9 columns and 5 data rows
+   📥 Inserted 5/5 rows
+   ✅ Successfully loaded into table: rm_transfer_costs_rm_transfer
+
+📄 Processing: Cost Data/Freight_storage_costs.xlsx
+   Sheet: I. Template - WH Storage RawDat | Header Row: 4
+   🧪 Header Row Raw Data: [
+  null,
+  'FG Code',
+  'FG_Desc',
+  'UOM',
+  'WH Code',
+  '#UOM per pallet',
+  'Storage Cost/Pallet (USD)',
+  'Storage Cost/Carton',
+  null,
+  null,
+  null,
+  null
+]
+   Found 12 columns and 2061 data rows
+   📥 Inserted 2061/2061 rows
+   ✅ Successfully loaded into table: freight_storage_costs_i_template_wh_storage_rawdat
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Planning time period | Header Row: 4
+   🧪 Header Row Raw Data: [ '7', 'August', '2025', null ]
+   Found 4 columns and 9 data rows
+   📥 Inserted 9/9 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_planning_time_period
+
+📄 Processing: Cost Data/Freight_storage_costs.xlsx
+   Sheet: II. Template - FreightRawData | Header Row: 4
+   🧪 Header Row Raw Data: [
+  null,
+  'FG Code',
+  'FG_Desc',
+  'UOM',
+  'Origin',
+  'Destination',
+  'Truck Load (UoM)',
+  'Truck Freight (USD)/Truckload',
+  null
+]
+   Found 9 columns and 24732 data rows
+   📥 Inserted 24732/24732 rows
+   ✅ Successfully loaded into table: freight_storage_costs_ii_template_freightrawdata
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Factory-Line Availability | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Factory',         'Line',          'Month',
+  'Working days',    'Working hours', 'Min Utilization',
+  'Max utilization', null,            null,
+  null,              null,            null,
+  null,              null,            null,
+  null,              null,            null,
+  null,              null,            null,
+  null,              null,            null,
+  null,              null,            null,
+  null,              null,            null,
+  null,              null,            null,
+  null
+]
+   Found 34 columns and 348 data rows
+   📥 Inserted 348/348 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_factory_line_availability
+
+📄 Processing: Cost Data/Freight_storage_costs.xlsx
+   Sheet: Factory | Header Row: 1
+   🧪 Header Row Raw Data: [ 'FactCode', 'FactCountry' ]
+   Found 2 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: freight_storage_costs_factory
+
+📄 Processing: Cost Data/Freight_storage_costs.xlsx
+   Sheet: Warehouse | Header Row: 1
+   🧪 Header Row Raw Data: [ 'WHCode', 'WHCountry' ]
+   Found 2 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: freight_storage_costs_warehouse
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Line-SKU Production | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Factory',               'Line',
+  'SKU',                   'Month',
+  'Capacity (Units/hour)', 'Production Allowed',
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null,                    null,
+  null
+]
+   Found 33 columns and 1971 data rows
+   📥 Inserted 1971/1971 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_line_sku_production
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Infinite Line Capacity | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Parameter', 'Value', null, null,
+  null,        null,    null, null,
+  null,        null,    null, null,
+  null,        null,    null, null,
+  null,        null,    null, null,
+  null,        null,    null, null,
+  null,        null,    null, null,
+  null,        null,    null, null,
+  null,        null,    null, null,
+  null,        null,    null, null,
+  null,        null
+]
+   Found 42 columns and 1 data rows
+   📥 Inserted 1/1 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_infinite_line_capacity
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Trimmings Decision | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Factory', 'Month', 'Parameter', 'Value',
+  null,      null,    null,        null,
+  null,      null,    null,        null,
+  null,      null,    null,        null,
+  null,      null,    null,        null,
+  null,      null,    null,        null,
+  null,      null,    null,        null,
+  null,      null,    null,        null,
+  null,      null,    null,        null,
+  null,      null,    null,        null,
+  null,      null,    null,        null
+]
+   Found 44 columns and 6 data rows
+   📥 Inserted 6/6 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_trimmings_decision
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Handling Unmet | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'SKU Code',       'SKU Description', 'Month',
+  'Always produce', null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null,             null,              null,
+  null
+]
+   Found 46 columns and 6 data rows
+   📥 Inserted 6/6 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_handling_unmet
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Inventory Norms | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'SKU Code',
+  'SKU Description',
+  'Warehouse',
+  'Policy',
+  'Month',
+  'Min Closing Stock (# Days)',
+  'Max Closing Stock (# Days)',
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+]
+   Found 47 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_inventory_norms
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Trimming Inventory | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Factory',
+  'Month',
+  'RM SKU Code',
+  'RM SKU',
+  'Min closing stock in kg',
+  'Storage Cost/Unit/Month',
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+]
+   Found 47 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_trimming_inventory
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Export Restrictions | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'FG SKU Code',    'Description',         'Month',
+  'Origin Factory', 'Destination Country', null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null,                  null,
+  null,             null
+]
+   Found 44 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_export_restrictions
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Import Restrictions | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Factory',     'RMSKU', 'UoM',
+  'Description', 'Month', null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null,          null,    null,
+  null
+]
+   Found 43 columns and 1 data rows
+   📥 Inserted 1/1 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_import_restrictions
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Exchange Rate | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Factory', 'Currency', 'Exchange rate',
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null,      null,       null,
+  null
+]
+   Found 43 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_exchange_rate
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Labor parameters | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Factory',
+  'Direct Variable Labor (Headcount)',
+  'Minimum DVL',
+  'Minimum contract labor hours/month',
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+]
+   Found 44 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_labor_parameters
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Direct Variable Labor Cost | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Parameter', 'Factory', '5',  '6',
+  '7',         '8',       '9',  '10',
+  '11',        '12',      '13', '14',
+  '15',        '16',      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null
+]
+   Found 43 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_direct_variable_labor_cost
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Overtime Labor Cost | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Parameter', 'Factory', '5',  '6',
+  '7',         '8',       '9',  '10',
+  '11',        '12',      '13', '14',
+  '15',        '16',      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null
+]
+   Found 43 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_overtime_labor_cost
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Contract Labor Cost | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Parameter', 'Factory', '5',  '6',
+  '7',         '8',       '9',  '10',
+  '11',        '12',      '13', '14',
+  '15',        '16',      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null
+]
+   Found 43 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_contract_labor_cost
+
+📄 Processing: Base_scenario_configuration.xlsx
+   Sheet: Energy Cost | Header Row: 4
+   🧪 Header Row Raw Data: [
+  'Parameter', 'Factory', '5',  '6',
+  '7',         '8',       '9',  '10',
+  '11',        '12',      '13', '14',
+  '15',        '16',      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null,      null, null,
+  null,        null
+]
+   Found 42 columns and 3 data rows
+   📥 Inserted 3/3 rows
+   ✅ Successfully loaded into table: base_scenario_configuration_energy_cost
+
+======================================================================
+DATA LOAD SUMMARY REPORT
+======================================================================
+
+Total configurations: 41
+✅ Successful: 39
+❌ Failed: 2
+
+✅ Successfully Loaded Tables:
+----------------------------------------------------------------------
+item_master_nfc                          |  59776 rows |  79 cols | SKU Master/Item_master_NFC.xlsx
+item_master_kfc                          |  29235 rows |  79 cols | SKU Master/Item_master_KFC.xlsx
+item_master_gfc                          |  11093 rows |  79 cols | SKU Master/Item_master_GFC.xlsx
+demand_country_master                    |     25 rows |   7 cols | Demand_country_master.xlsx
+gfc_bom_current_system                   |   4894 rows |  12 cols | Bill of Materials/GFC_BOM.xlsx
+kfc_bom_kpf                              |   7937 rows |  12 cols | Bill of Materials/KFC_BOM.xlsx
+nf1_bom_nf1                              |   7005 rows |  12 cols | Bill of Materials/NF1_BOM.xlsx
+nf2_bom_nf2                              |   8967 rows |  12 cols | Bill of Materials/NF2_BOM.xlsx
+chicken_trimming_recipe                  |     12 rows |  10 cols | Bill of Materials/Chicken_trimming_recipe.xlsx
+factory_routing                          |    205 rows |  19 cols | Cost Data/Factory_routing.xlsx
+labor_cost_details_by_factory            |      5 rows |   8 cols | Cost Data/Labor_cost_details_by_factory.xlsx
+demand_raw_demand                        |   1530 rows |  35 cols | Demand and OS/Demand.xlsx
+gfc_os_available_current_stock_030123    |   1527 rows |  12 cols | Demand and OS/GFC_OS.xlsx
+kfc_os_kpl                               |    459 rows |  12 cols | Demand and OS/KFC_OS.xlsx
+kfc_os_kpe                               |     97 rows |  12 cols | Demand and OS/KFC_OS.xlsx
+nfc_os_available_current_stock_020123    |  10459 rows |  12 cols | Demand and OS/NFC_OS.xlsx
+landed_raw_material_cost                 |    249 rows |  18 cols | Cost Data/Landed_raw_material_cost.xlsx
+customs                                  |    299 rows |   5 cols | Cost Data/Customs.xlsx
+rm_transfer_costs_rm_transfer            |      5 rows |   9 cols | Cost Data/RM_transfer_costs.xlsx
+freight_storage_costs_i_template_wh_storage_rawdat |   2061 rows |  12 cols | Cost Data/Freight_storage_costs.xlsx
+base_scenario_configuration_planning_time_period |      9 rows |   4 cols | Base_scenario_configuration.xlsx
+freight_storage_costs_ii_template_freightrawdata |  24732 rows |   9 cols | Cost Data/Freight_storage_costs.xlsx
+base_scenario_configuration_factory_line_availability |    348 rows |  34 cols | Base_scenario_configuration.xlsx
+freight_storage_costs_factory            |      3 rows |   2 cols | Cost Data/Freight_storage_costs.xlsx
+freight_storage_costs_warehouse          |      3 rows |   2 cols | Cost Data/Freight_storage_costs.xlsx
+base_scenario_configuration_line_sku_production |   1971 rows |  33 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_infinite_line_capacity |      1 rows |  42 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_trimmings_decision |      6 rows |  44 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_handling_unmet |      6 rows |  46 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_inventory_norms |      3 rows |  47 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_trimming_inventory |      3 rows |  47 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_export_restrictions |      3 rows |  44 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_import_restrictions |      1 rows |  43 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_exchange_rate |      3 rows |  43 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_labor_parameters |      3 rows |  44 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_direct_variable_labor_cost |      3 rows |  43 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_overtime_labor_cost |      3 rows |  43 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_contract_labor_cost |      3 rows |  43 cols | Base_scenario_configuration.xlsx
+base_scenario_configuration_energy_cost  |      3 rows |  42 cols | Base_scenario_configuration.xlsx
+
+❌ Failed Loads:
+----------------------------------------------------------------------
+Factory_Line_Master.xlsx                 | Sheet1               | File not found
+SKU-Line Mapping/Capacity.xlsx           | Item master          | column "new_line_2" specified more than once
+
+======================================================================
+
+✅ Data loading completed successfully!
+
+📊 Loaded Tables Summary:
+┌─────────┬─────────────────────────────────────────────────────────────┬───────────┬──────────────┐
+│ (index) │                         table_name                          │   size    │ column_count │
+├─────────┼─────────────────────────────────────────────────────────────┼───────────┼──────────────┤
+│    0    │      'base_scenario_configuration_contract_labor_cost'      │  '32 kB'  │     '47'     │
+│    1    │  'base_scenario_configuration_direct_variable_labor_cost'   │  '32 kB'  │     '47'     │
+│    2    │          'base_scenario_configuration_energy_cost'          │  '32 kB'  │     '46'     │
+│    3    │         'base_scenario_configuration_exchange_rate'         │  '32 kB'  │     '47'     │
+│    4    │      'base_scenario_configuration_export_restrictions'      │  '32 kB'  │     '48'     │
+│    5    │   'base_scenario_configuration_factory_line_availability'   │ '104 kB'  │     '38'     │
+│    6    │        'base_scenario_configuration_handling_unmet'         │  '32 kB'  │     '50'     │
+│    7    │      'base_scenario_configuration_import_restrictions'      │  '32 kB'  │     '47'     │
+│    8    │    'base_scenario_configuration_infinite_line_capacity'     │  '32 kB'  │     '46'     │
+│    9    │        'base_scenario_configuration_inventory_norms'        │  '32 kB'  │     '51'     │
+│   10    │       'base_scenario_configuration_labor_parameters'        │  '32 kB'  │     '48'     │
+│   11    │      'base_scenario_configuration_line_sku_production'      │ '368 kB'  │     '37'     │
+│   12    │      'base_scenario_configuration_overtime_labor_cost'      │  '32 kB'  │     '47'     │
+│   13    │     'base_scenario_configuration_planning_time_period'      │  '32 kB'  │     '8'      │
+│   14    │      'base_scenario_configuration_trimming_inventory'       │  '32 kB'  │     '51'     │
+│   15    │      'base_scenario_configuration_trimmings_decision'       │  '32 kB'  │     '48'     │
+│   16    │                  'chicken_trimming_recipe'                  │  '32 kB'  │     '14'     │
+│   17    │                          'customs'                          │  '96 kB'  │     '9'      │
+│   18    │                   'demand_country_master'                   │  '32 kB'  │     '11'     │
+│   19    │                    'demand_export_jobs'                     │  '32 kB'  │     '9'      │
+│   20    │                     'demand_raw_demand'                     │ '536 kB'  │     '39'     │
+│   21    │                     'demand_templates'                      │  '24 kB'  │     '10'     │
+│   22    │                       'etl_audit_log'                       │  '96 kB'  │     '13'     │
+│   23    │        'etl_base_scenario_configuration_energy_cost'        │  '24 kB'  │     '5'      │
+│   24    │ 'etl_base_scenario_configuration_factory_line_availability' │  '24 kB'  │     '5'      │
+│   25    │    'etl_base_scenario_configuration_line_sku_production'    │ '168 kB'  │     '6'      │
+│   26    │   'etl_base_scenario_configuration_planning_time_period'    │  '24 kB'  │     '5'      │
+│   27    │                    'etl_column_mapping'                     │  '48 kB'  │     '10'     │
+│   28    │                   'etl_master_audit_log'                    │  '32 kB'  │     '8'      │
+│   29    │                        'export_jobs'                        │  '24 kB'  │     '8'      │
+│   30    │                      'factory_routing'                      │  '88 kB'  │     '23'     │
+│   31    │               'freight_storage_costs_factory'               │  '32 kB'  │     '6'      │
+│   32    │    'freight_storage_costs_i_template_wh_storage_rawdat'     │ '520 kB'  │     '16'     │
+│   33    │     'freight_storage_costs_ii_template_freightrawdata'      │ '5528 kB' │     '13'     │
+│   34    │              'freight_storage_costs_warehouse'              │  '32 kB'  │     '6'      │
+│   35    │                  'gfc_bom_current_system'                   │ '1040 kB' │     '16'     │
+│   36    │           'gfc_os_available_current_stock_030123'           │ '440 kB'  │     '16'     │
+│   37    │                      'item_master_gfc'                      │ '7512 kB' │     '83'     │
+│   38    │                      'item_master_kfc'                      │  '20 MB'  │     '83'     │
+│   39    │                      'item_master_nfc'                      │  '41 MB'  │     '83'     │
+│   40    │                        'kfc_bom_kpf'                        │ '1712 kB' │     '16'     │
+│   41    │                        'kfc_os_kpe'                         │  '72 kB'  │     '16'     │
+│   42    │                        'kfc_os_kpl'                         │ '176 kB'  │     '16'     │
+│   43    │               'labor_cost_details_by_factory'               │  '32 kB'  │     '12'     │
+│   44    │                 'landed_raw_material_cost'                  │ '104 kB'  │     '22'     │
+│   45    │                    'macro_calculations'                     │  '24 kB'  │     '9'      │
+│   46    │                        'nf1_bom_nf1'                        │ '1432 kB' │     '16'     │
+│   47    │                        'nf2_bom_nf2'                        │ '1824 kB' │     '16'     │
+│   48    │           'nfc_os_available_current_stock_020123'           │ '2904 kB' │     '16'     │
+│   49    │               'rm_transfer_costs_rm_transfer'               │  '32 kB'  │     '13'     │
+│   50    │                        'sheet_data'                         │ '828 MB'  │     '9'      │
+│   51    │                         't11_prod'                          │  '33 MB'  │     '35'     │
+│   52    │                      'uploaded_files'                       │  '64 kB'  │     '9'      │
+│   53    │                         'workbooks'                         │  '40 kB'  │     '8'      │
+│   54    │                        'worksheets'                         │  '40 kB'  │     '9'      │
+└─────────┴─────────────────────────────────────────────────────────────┴───────────┴──────────────┘
+✅ Database connection closed
+✅ Data loading completed!

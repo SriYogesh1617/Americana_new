@@ -93,22 +93,28 @@ const getT01DataAsArray = async (req, res) => {
     }
 
     // Convert to 2D array format
-    const headers = ['CTY', 'Market', 'FGSKU Code', 'Demand Cases', 'Month', 'Year', 'Production Environment', 'Safety Stock WH', 'Inventory Days Norm', 'Supply', 'Cons'];
+    const headers = ['CTY', 'Market', 'FGSKU Code', 'Demand Cases', 'Month', 'Production Environment', 'Safety Stock WH', 'Inventory Days Norm', 'Supply', 'Cons'];
     const arrayData = [headers];
 
-    data.forEach(item => {
+    data.forEach((item, idx) => {
+      // Excel row number (row 1 is header)
+      const excelRow = idx + 2;
+      // Generate formulas dynamically
+      const supply = `T_02!V${164000 + excelRow * 12}+T_02!V${164001 + excelRow * 12}+T_02!V${164002 + excelRow * 12}+T_02!V${164003 + excelRow * 12}`;
+      const cons = `=@WB(D${excelRow},"=",I${excelRow})`;
+      // Round demand cases to nearest integer
+      const demandCases = Math.round(parseFloat(item.demand_cases));
       arrayData.push([
         item.cty,
         item.market,
         item.fgsku_code,
-        item.demand_cases,
+        demandCases,
         item.month,
-        item.year,
         item.production_environment,
         item.safety_stock_wh,
         item.inventory_days_norm,
-        item.supply,
-        item.cons
+        supply,
+        cons
       ]);
     });
     
@@ -177,21 +183,27 @@ const exportT01ToExcel = async (req, res) => {
     }
 
     // Prepare data for Excel export
-    const excelData = data.map(item => ({
-      'CTY': item.cty,
-      'Market': item.market,
-      'FGSKU Code': item.fgsku_code,
-      'Demand Cases': item.demand_cases,
-      'Month': item.month,
-      'Year': item.year,
-      'Production Environment': item.production_environment,
-      'Safety Stock WH': item.safety_stock_wh,
-      'Inventory Days Norm': item.inventory_days_norm,
-      'Supply': item.supply,
-      'Cons': item.cons,
-      'Upload Batch ID': item.upload_batch_id,
-      'Created At': item.created_at
-    }));
+    const excelData = data.map((item, idx) => {
+      const excelRow = idx + 2;
+      const supply = `T_02!V${164000 + excelRow * 12}+T_02!V${164001 + excelRow * 12}+T_02!V${164002 + excelRow * 12}+T_02!V${164003 + excelRow * 12}`;
+      const cons = `=@WB(D${excelRow},"=",I${excelRow})`;
+      // Round demand cases to nearest integer
+      const demandCases = Math.round(parseFloat(item.demand_cases));
+      return {
+        'CTY': item.cty,
+        'Market': item.market,
+        'FGSKU Code': item.fgsku_code,
+        'Demand Cases': demandCases,
+        'Month': item.month,
+        'Production Environment': item.production_environment,
+        'Safety Stock WH': item.safety_stock_wh,
+        'Inventory Days Norm': item.inventory_days_norm,
+        'Supply': supply,
+        'Cons': cons,
+        'Upload Batch ID': item.upload_batch_id,
+        'Created At': item.created_at
+      };
+    });
 
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();

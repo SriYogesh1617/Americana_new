@@ -1,0 +1,686 @@
+{
+  "tableName": "T04_WHBal",
+  "description": "T04_WHBal Table - Implementation based on T4.xlsx specification",
+  "dataSources": [],
+  "transformationSteps": [
+    {
+      "column": "WH",
+      "logic": "i. For all the filtered SKUs in demand.xlsx - add 4 rows per month for every SKU where the WH column has all 4 GFCM, NFCM, KFCM and X"
+    },
+    {
+      "column": "FGSKUCode",
+      "logic": "ii. Map the month numbers from \"Base_scenario_configuration / Planning time period\""
+    },
+    {
+      "column": "MTO Demand (Next Month)",
+      "logic": "i. For every SKU + Warehouse combination - sum the demand in T01 for matching FGSKUCode + Safety Stock WH + Next Month Code where SKU type is MTO"
+    },
+    {
+      "column": "MTS Demand (Next Month)",
+      "logic": "i. For every SKU + Warehouse combination - sum the demand in T01 for matching FGSKUCode + Safety Stock WH + Next Month Code where SKU type is MTS"
+    },
+    {
+      "column": "Inventory Days(Norm)",
+      "logic": "For every FG SKU + Factory combination - lookup inventory days from Capacity.xlsx"
+    },
+    {
+      "column": "MTS Demand (Next 3 Months)",
+      "logic": "i. For every SKU + Warehouse combination - sum the demand in T01 for matching FGSKUCode + Safety Stock WH + Next Month Code where SKU type is MTS"
+    },
+    {
+      "column": "MinOS",
+      "logic": "Set 0 for all rows"
+    },
+    {
+      "column": "MaxOS",
+      "logic": "Set as 10^10 for all rows except for where WH  = X"
+    },
+    {
+      "column": "MinCS",
+      "logic": "Calculate and hardcode the value for each row where"
+    },
+    {
+      "column": "MaxCS",
+      "logic": "Set as 10^10 for all rows except for where WH  = X"
+    },
+    {
+      "column": "MaxSupLim",
+      "logic": "Set 1 for all rows"
+    },
+    {
+      "column": "M1OSGFC",
+      "logic": "For every FGSKUCode + GFCM combination - sum the qty on hand from inventory data for GFC where \"reporting level\" is \"SUBINV_LEVEL\""
+    },
+    {
+      "column": "M1OSKFC",
+      "logic": "For every FGSKUCode + KFCM combination - sum the qty on hand from inventory data for KFC where \"reporting level\" is \"SUBINV_LEVEL\""
+    },
+    {
+      "column": "M1OSNFC",
+      "logic": "For every FGSKUCode + NFCM combination - sum the qty on hand from inventory data for NFC where \"reporting level\" is \"SUBINV_LEVEL\""
+    },
+    {
+      "column": "FGWtPerUnit",
+      "logic": "Lookup from Item master based on FGSKUCode"
+    },
+    {
+      "column": "NormMarkup",
+      "logic": "Set as 1 for all rows"
+    },
+    {
+      "column": "M1OSX",
+      "logic": "Set 0 for all rows"
+    },
+    {
+      "column": "OS_GFC",
+      "logic": "1. For every SKU + WH combination - first month's opening stock formula is \"=M1OSGFC\""
+    },
+    {
+      "column": "In_GFC",
+      "logic": "Formula to be added in all rows:"
+    },
+    {
+      "column": "Out_GFC",
+      "logic": "Formula to be added in all all rows:"
+    },
+    {
+      "column": "CS_GFC",
+      "logic": "Formula to be added for all rows as :"
+    },
+    {
+      "column": "maxSupply",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "OS_KFC",
+      "logic": "1. For every SKU + WH combination - first month's opening stock formula is \"=M1OSKFC\""
+    },
+    {
+      "column": "In_KFC",
+      "logic": "Formula to be added in all rows:"
+    },
+    {
+      "column": "Out_KFC",
+      "logic": "Formula to be added in all all rows:"
+    },
+    {
+      "column": "CS_KFC",
+      "logic": "Formula to be added for all rows as :"
+    },
+    {
+      "column": "maxSupply",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "OS_NFC",
+      "logic": "1. For every SKU + WH combination - first month's opening stock formula is \"=M1OSNFC\""
+    },
+    {
+      "column": "In_NFC",
+      "logic": "Formula to be added in all rows:"
+    },
+    {
+      "column": "Out_NFC",
+      "logic": "Formula to be added in all all rows:"
+    },
+    {
+      "column": "CS_NFC",
+      "logic": "Formula to be added for all rows as :"
+    },
+    {
+      "column": "maxSupply",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "OS_X",
+      "logic": "1. For every SKU + WH combination - first month's opening stock formula is \"=M1OSX\""
+    },
+    {
+      "column": "In_X",
+      "logic": "Formula to be added in all rows:"
+    },
+    {
+      "column": "Out_X",
+      "logic": "Formula to be added in all all rows:"
+    },
+    {
+      "column": "CS_X",
+      "logic": "Formula to be added for all rows as :"
+    },
+    {
+      "column": "maxSupply",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "OS_Tot",
+      "logic": "Formula to be added for all rows as:"
+    },
+    {
+      "column": "In_Tot",
+      "logic": "Formula to be added for all rows an:"
+    },
+    {
+      "column": "Out_Tot",
+      "logic": "Formula to be added for all rows an:"
+    },
+    {
+      "column": "CS_Tot",
+      "logic": "Formula to be added for all rows an:"
+    },
+    {
+      "column": "maxSupply",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "CSWt_GFC",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "CSWt_KFC",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "CSWt_NFC",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "FinalNorm",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "Avg Stock",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "Supply_GFC",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "Supply_KFC",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "Supply_NFC",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "OS>=Min",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "OS<=Max",
+      "logic": "Leave blank for all rows"
+    },
+    {
+      "column": "CS>=Min",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "CS<=Max",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "Supply_X",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "StorageCost",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "ICC",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "RowCost",
+      "logic": "Formula to be added for all rows:"
+    },
+    {
+      "column": "StorageCostV2",
+      "logic": "Formula to be added for all rows:"
+    }
+  ],
+  "columns": [
+    {
+      "name": "WH",
+      "sqlType": "VARCHAR(50)",
+      "position": 2,
+      "description": "Warehouse Code - NFCM/GFCM/KFCM",
+      "required": true
+    },
+    {
+      "name": "FGSKUCode",
+      "sqlType": "VARCHAR(50)",
+      "position": 5,
+      "description": "SKU Code",
+      "required": true
+    },
+    {
+      "name": "MthNum",
+      "sqlType": "INTEGER",
+      "position": 8,
+      "description": "Month  (all months are 1-12 in model regardless of the cycle month)",
+      "required": true
+    },
+    {
+      "name": "MTO Demand (Next Month)",
+      "sqlType": "VARCHAR(50)",
+      "position": 9,
+      "description": "Make to order demand for a SKU + Warehouse combination for next month",
+      "required": true
+    },
+    {
+      "name": "MTS Demand (Next Month)",
+      "sqlType": "VARCHAR(50)",
+      "position": 10,
+      "description": "Make to stock demand for a SKU + Warehouse combination for next month",
+      "required": true
+    },
+    {
+      "name": "Inventory Days(Norm)",
+      "sqlType": "VARCHAR(50)",
+      "position": 11,
+      "description": "Inventory days as per inventory policy for a given SKU + WH combination",
+      "required": true
+    },
+    {
+      "name": "StoreCost",
+      "sqlType": "TEXT",
+      "position": 12,
+      "description": "",
+      "required": true
+    },
+    {
+      "name": "MTS Demand (Next 3 Months)",
+      "sqlType": "VARCHAR(50)",
+      "position": 13,
+      "description": "Make to stock demand for next 3 months for given SKU + WH combination",
+      "required": true
+    },
+    {
+      "name": "MinOS",
+      "sqlType": "VARCHAR(50)",
+      "position": 14,
+      "description": "Min. opening stock for a given SKU + WH combination",
+      "required": true
+    },
+    {
+      "name": "MaxOS",
+      "sqlType": "VARCHAR(50)",
+      "position": 15,
+      "description": "Max. opening stock for a given SKU + WH combination",
+      "required": true
+    },
+    {
+      "name": "MinCS",
+      "sqlType": "VARCHAR(50)",
+      "position": 16,
+      "description": "Min. closing stock for a given SKU + WH combination",
+      "required": true
+    },
+    {
+      "name": "MaxCS",
+      "sqlType": "VARCHAR(50)",
+      "position": 17,
+      "description": "Max. closing stock for a given SKU + WH combination",
+      "required": true
+    },
+    {
+      "name": "MaxSupLim",
+      "sqlType": "TEXT",
+      "position": 18,
+      "description": "Max supply limit multiplier",
+      "required": true
+    },
+    {
+      "name": "M1OSGFC",
+      "sqlType": "VARCHAR(50)",
+      "position": 19,
+      "description": "First month opening stock for a given FGSKUCode in GFCM (UAE)",
+      "required": true
+    },
+    {
+      "name": "M1OSKFC",
+      "sqlType": "VARCHAR(50)",
+      "position": 20,
+      "description": "First month opening stock for a given FGSKUCode in KFCM (Kuwait)",
+      "required": true
+    },
+    {
+      "name": "M1OSNFC",
+      "sqlType": "VARCHAR(50)",
+      "position": 21,
+      "description": "First month opening stock for a given FGSKUCode in NFCM (KSA)",
+      "required": true
+    },
+    {
+      "name": "FGWtPerUnit",
+      "sqlType": "VARCHAR(50)",
+      "position": 22,
+      "description": "Unit SKU weight",
+      "required": true
+    },
+    {
+      "name": "CSNorm",
+      "sqlType": "TEXT",
+      "position": 23,
+      "description": "",
+      "required": true
+    },
+    {
+      "name": "NormMarkup",
+      "sqlType": "TEXT",
+      "position": 24,
+      "description": "",
+      "required": true
+    },
+    {
+      "name": "M1OSX",
+      "sqlType": "VARCHAR(50)",
+      "position": 25,
+      "description": "First month opening stock for a given FGSKUCode in X (Arbit Factory)",
+      "required": true
+    },
+    {
+      "name": "Next 3 Months Demand (Total)",
+      "sqlType": "VARCHAR(50)",
+      "position": 26,
+      "description": "Next 3 months demand for a given SKU + WH combination",
+      "required": true
+    },
+    {
+      "name": "OS_GFC",
+      "sqlType": "TEXT",
+      "position": 27,
+      "description": "Opening stock at GFC",
+      "required": true
+    },
+    {
+      "name": "In_GFC",
+      "sqlType": "TEXT",
+      "position": 28,
+      "description": "Qty produced in GFC",
+      "required": true
+    },
+    {
+      "name": "Out_GFC",
+      "sqlType": "TEXT",
+      "position": 29,
+      "description": "Qty shipped from GFC",
+      "required": true
+    },
+    {
+      "name": "CS_GFC",
+      "sqlType": "TEXT",
+      "position": 30,
+      "description": "Closing stock - GFC",
+      "required": true
+    },
+    {
+      "name": "maxSupply",
+      "sqlType": "DECIMAL(15,2)",
+      "position": 31,
+      "description": "Max supply quantity - GFC",
+      "required": true
+    },
+    {
+      "name": "OS_KFC",
+      "sqlType": "TEXT",
+      "position": 32,
+      "description": "Opening stock at KFC",
+      "required": true
+    },
+    {
+      "name": "In_KFC",
+      "sqlType": "TEXT",
+      "position": 33,
+      "description": "Qty produced in KFC",
+      "required": true
+    },
+    {
+      "name": "Out_KFC",
+      "sqlType": "TEXT",
+      "position": 34,
+      "description": "Qty shipped from KFC",
+      "required": true
+    },
+    {
+      "name": "CS_KFC",
+      "sqlType": "TEXT",
+      "position": 35,
+      "description": "Closing stock - KFC",
+      "required": true
+    },
+    {
+      "name": "maxSupply",
+      "sqlType": "DECIMAL(15,2)",
+      "position": 36,
+      "description": "Max supply quantity - KFC",
+      "required": true
+    },
+    {
+      "name": "OS_NFC",
+      "sqlType": "TEXT",
+      "position": 37,
+      "description": "Opening stock at NFC",
+      "required": true
+    },
+    {
+      "name": "In_NFC",
+      "sqlType": "TEXT",
+      "position": 38,
+      "description": "Qty produced in NFC",
+      "required": true
+    },
+    {
+      "name": "Out_NFC",
+      "sqlType": "TEXT",
+      "position": 39,
+      "description": "Qty shipped from NFC",
+      "required": true
+    },
+    {
+      "name": "CS_NFC",
+      "sqlType": "TEXT",
+      "position": 40,
+      "description": "Closing stock - NFC",
+      "required": true
+    },
+    {
+      "name": "maxSupply",
+      "sqlType": "DECIMAL(15,2)",
+      "position": 41,
+      "description": "Max supply quantity - NFC",
+      "required": true
+    },
+    {
+      "name": "OS_X",
+      "sqlType": "TEXT",
+      "position": 42,
+      "description": "Opening stock at X",
+      "required": true
+    },
+    {
+      "name": "In_X",
+      "sqlType": "TEXT",
+      "position": 43,
+      "description": "Qty produced in X",
+      "required": true
+    },
+    {
+      "name": "Out_X",
+      "sqlType": "TEXT",
+      "position": 44,
+      "description": "Qty shipped from X",
+      "required": true
+    },
+    {
+      "name": "CS_X",
+      "sqlType": "TEXT",
+      "position": 45,
+      "description": "Closing stock - X",
+      "required": true
+    },
+    {
+      "name": "maxSupply",
+      "sqlType": "DECIMAL(15,2)",
+      "position": 46,
+      "description": "Max supply quantity - X",
+      "required": true
+    },
+    {
+      "name": "OS_Tot",
+      "sqlType": "TEXT",
+      "position": 42,
+      "description": "Total opening stock - all factories combined",
+      "required": true
+    },
+    {
+      "name": "In_Tot",
+      "sqlType": "TEXT",
+      "position": 43,
+      "description": "Total produced qty - all factories combined",
+      "required": true
+    },
+    {
+      "name": "Out_Tot",
+      "sqlType": "TEXT",
+      "position": 44,
+      "description": "Total shipped qty - all factories combined",
+      "required": true
+    },
+    {
+      "name": "CS_Tot",
+      "sqlType": "TEXT",
+      "position": 45,
+      "description": "Total closing stock - all factories combined",
+      "required": true
+    },
+    {
+      "name": "maxSupply",
+      "sqlType": "TEXT",
+      "position": 46,
+      "description": "Max supply qty - all factories combined",
+      "required": true
+    },
+    {
+      "name": "CSWt_GFC",
+      "sqlType": "DECIMAL(15,2)",
+      "position": 47,
+      "description": "Closing stock weight in KG - GFC",
+      "required": true
+    },
+    {
+      "name": "CSWt_KFC",
+      "sqlType": "DECIMAL(15,2)",
+      "position": 48,
+      "description": "Closing stock weight in KG - KFC",
+      "required": true
+    },
+    {
+      "name": "CSWt_NFC",
+      "sqlType": "DECIMAL(15,2)",
+      "position": 49,
+      "description": "Closing stock weight in KG - NFC",
+      "required": true
+    },
+    {
+      "name": "FinalNorm",
+      "sqlType": "TEXT",
+      "position": 50,
+      "description": "",
+      "required": true
+    },
+    {
+      "name": "Avg Stock",
+      "sqlType": "TEXT",
+      "position": 51,
+      "description": "Average of opening and closing stock",
+      "required": true
+    },
+    {
+      "name": "Supply_GFC",
+      "sqlType": "TEXT",
+      "position": 53,
+      "description": "Shipped qty from GFC <= Max limit",
+      "required": true
+    },
+    {
+      "name": "Supply_KFC",
+      "sqlType": "TEXT",
+      "position": 54,
+      "description": "Shipped qty from KFC <= Max limit",
+      "required": true
+    },
+    {
+      "name": "Supply_NFC",
+      "sqlType": "TEXT",
+      "position": 55,
+      "description": "Shipped qty from NFC <= Max limit",
+      "required": true
+    },
+    {
+      "name": "OS>=Min",
+      "sqlType": "TEXT",
+      "position": 56,
+      "description": "Opening stock >= Min Opening stock",
+      "required": true
+    },
+    {
+      "name": "OS<=Max",
+      "sqlType": "TEXT",
+      "position": 57,
+      "description": "Opening stock <= Max Opening stock",
+      "required": true
+    },
+    {
+      "name": "CS>=Min",
+      "sqlType": "TEXT",
+      "position": 58,
+      "description": "Closing stock >= Min Closing stock",
+      "required": true
+    },
+    {
+      "name": "CS<=Max",
+      "sqlType": "TEXT",
+      "position": 59,
+      "description": "Closing stock <= Max Closing stock",
+      "required": true
+    },
+    {
+      "name": "Supply_X",
+      "sqlType": "VARCHAR(10)",
+      "position": 60,
+      "description": "Qty shipped from factory X = Max Supply at X",
+      "required": true
+    },
+    {
+      "name": "StorageCost",
+      "sqlType": "DECIMAL(15,4)",
+      "position": 63,
+      "description": "Storage cost ",
+      "required": true
+    },
+    {
+      "name": "ICC",
+      "sqlType": "TEXT",
+      "position": 64,
+      "description": "",
+      "required": true
+    },
+    {
+      "name": "RowCost",
+      "sqlType": "TEXT",
+      "position": 68,
+      "description": "",
+      "required": true
+    },
+    {
+      "name": "StorageCostV2",
+      "sqlType": "DECIMAL(15,4)",
+      "position": "",
+      "description": "Average storage cost",
+      "required": true
+    }
+  ]
+}

@@ -116,4 +116,13 @@ backend/uploads/
 
 # Package manager lock files (optional - uncomment if you want to ignore them)
 # package-lock.json
-# yarn.lock 
+# yarn.lock
+
+# Large files and analysis outputs
+*_complete_analysis.json
+*_analysis.json
+test_*.xlsx
+*_export.xlsx
+# Excel temporary files
+~$*.xlsx
+~$*.xls 

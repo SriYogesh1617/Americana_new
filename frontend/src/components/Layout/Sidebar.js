@@ -195,6 +195,20 @@ const Sidebar = () => {
             <BarChart3 size={18} />
             <NavText>T02 Data</NavText>
           </NavItem>
+          <NavItem 
+            to="/t03-data" 
+            $isActive={isActive('/t03-data')}
+          >
+            <BarChart3 size={18} />
+            <NavText>T03 Data</NavText>
+          </NavItem>
+          <NavItem 
+            to="/t04-data" 
+            $isActive={isActive('/t04-data')}
+          >
+            <BarChart3 size={18} />
+            <NavText>T04 WHBal</NavText>
+          </NavItem>
         </NavSection>
         
         <NavSection>

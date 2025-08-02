@@ -300,4 +300,141 @@ CREATE TRIGGER update_demand_cursor_updated_at BEFORE UPDATE ON demand_cursor FO
 CREATE TRIGGER update_demand_country_master_cursor_updated_at BEFORE UPDATE ON demand_country_master_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_base_scenario_configuration_cursor_updated_at BEFORE UPDATE ON base_scenario_configuration_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_capacity_cursor_updated_at BEFORE UPDATE ON capacity_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_freight_storage_costs_cursor_updated_at BEFORE UPDATE ON freight_storage_costs_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 
+CREATE TRIGGER update_freight_storage_costs_cursor_updated_at BEFORE UPDATE ON freight_storage_costs_cursor FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- T03_PrimDist table for Primary Distribution data
+CREATE TABLE IF NOT EXISTS t03_primdist (
+    id SERIAL PRIMARY KEY,
+    wh VARCHAR(10) NOT NULL,                    -- Destination warehouse
+    plt VARCHAR(10) NOT NULL,                   -- Factory delivering to destination warehouse  
+    fg_sku_code VARCHAR(50) NOT NULL,           -- SKU Code
+    mth_num INTEGER NOT NULL,                   -- Month (1-12)
+    cost_per_unit DECIMAL(15,4),                -- Primary distribution freight cost/unit
+    custom_cost_per_unit DECIMAL(15,4),         -- Custom cost per unit SKU for international shipping
+    max_qty DECIMAL(15,2) DEFAULT 10000000000,  -- Quantity to enable/disable any primary shipping lane
+    fg_wt_per_unit DECIMAL(10,4),               -- Finished good weight per unit
+    qty DECIMAL(15,2) DEFAULT 0,                -- Shipped quantity from source factory to destination warehouse
+    wt DECIMAL(15,4),                           -- Shipped weight (calculated: Qty x FGWtPerUnit)
+    custom_duty DECIMAL(15,4),                  -- Total custom duty cost (calculated: Qty x Custom Cost/Unit)
+    row_cost DECIMAL(15,4),                     -- Total primary shipping cost per unit
+    workbook_id UUID REFERENCES workbooks(id) ON DELETE CASCADE,  -- Reference to source workbook
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Constraints
+    CONSTRAINT t03_qty_positive CHECK (qty >= 0),
+    CONSTRAINT t03_qty_max CHECK (qty <= max_qty)
+);
+
+-- Indexes for T03_PrimDist table
+CREATE INDEX IF NOT EXISTS idx_t03_sku_month ON t03_primdist(fg_sku_code, mth_num);
+CREATE INDEX IF NOT EXISTS idx_t03_warehouse ON t03_primdist(wh);
+CREATE INDEX IF NOT EXISTS idx_t03_factory ON t03_primdist(plt);
+CREATE INDEX IF NOT EXISTS idx_t03_workbook ON t03_primdist(workbook_id);
+CREATE INDEX IF NOT EXISTS idx_t03_sku_factory_wh ON t03_primdist(fg_sku_code, plt, wh);
+
+-- Trigger to update updated_at for T03_PrimDist table
+CREATE TRIGGER update_t03_primdist_updated_at BEFORE UPDATE ON t03_primdist FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- T04_WHBal table for Warehouse Balance data
+CREATE TABLE IF NOT EXISTS t04_whbal (
+    id SERIAL PRIMARY KEY,
+    wh VARCHAR(10) NOT NULL,                           -- Warehouse Code (GFCM/KFCM/NFCM/X)
+    fg_sku_code VARCHAR(50) NOT NULL,                  -- SKU Code
+    mth_num INTEGER NOT NULL,                          -- Month (1-12)
+    mto_demand_next_month DECIMAL(15,2) DEFAULT 0,     -- MTO demand next month
+    mts_demand_next_month DECIMAL(15,2) DEFAULT 0,     -- MTS demand next month
+    inventory_days_norm INTEGER DEFAULT 0,             -- Inventory days norm
+    store_cost DECIMAL(15,4) DEFAULT 0,                -- Store cost
+    mts_demand_next_3_months DECIMAL(15,2) DEFAULT 0,  -- MTS demand next 3 months
+    min_os DECIMAL(15,2) DEFAULT 0,                    -- Min opening stock
+    max_os DECIMAL(15,2) DEFAULT 10000000000,          -- Max opening stock
+    min_cs DECIMAL(15,2) DEFAULT 0,                    -- Min closing stock
+    max_cs DECIMAL(15,2) DEFAULT 10000000000,          -- Max closing stock
+    max_sup_lim DECIMAL(8,2) DEFAULT 1,                -- Max supply limit multiplier
+    m1os_gfc DECIMAL(15,2) DEFAULT 0,                  -- M1 opening stock GFC
+    m1os_kfc DECIMAL(15,2) DEFAULT 0,                  -- M1 opening stock KFC
+    m1os_nfc DECIMAL(15,2) DEFAULT 0,                  -- M1 opening stock NFC
+    fg_wt_per_unit DECIMAL(10,4) DEFAULT 1,            -- FG weight per unit
+    cs_norm DECIMAL(15,2) DEFAULT 0,                   -- CS norm
+    norm_markup DECIMAL(8,2) DEFAULT 1,                -- Norm markup
+    m1os_x DECIMAL(15,2) DEFAULT 0,                    -- M1 opening stock X
+    next_3_months_demand_total DECIMAL(15,2) DEFAULT 0, -- Next 3 months total demand
+    
+    -- Stock columns for each factory
+    os_gfc DECIMAL(15,2) DEFAULT 0,                    -- Opening stock GFC
+    in_gfc DECIMAL(15,2) DEFAULT 0,                    -- In GFC (produced)
+    out_gfc DECIMAL(15,2) DEFAULT 0,                   -- Out GFC (shipped)
+    cs_gfc DECIMAL(15,2) DEFAULT 0,                    -- Closing stock GFC
+    max_supply_gfc DECIMAL(15,2) DEFAULT 0,            -- Max supply GFC
+    
+    os_kfc DECIMAL(15,2) DEFAULT 0,                    -- Opening stock KFC
+    in_kfc DECIMAL(15,2) DEFAULT 0,                    -- In KFC (produced)
+    out_kfc DECIMAL(15,2) DEFAULT 0,                   -- Out KFC (shipped)
+    cs_kfc DECIMAL(15,2) DEFAULT 0,                    -- Closing stock KFC
+    max_supply_kfc DECIMAL(15,2) DEFAULT 0,            -- Max supply KFC
+    
+    os_nfc DECIMAL(15,2) DEFAULT 0,                    -- Opening stock NFC
+    in_nfc DECIMAL(15,2) DEFAULT 0,                    -- In NFC (produced)
+    out_nfc DECIMAL(15,2) DEFAULT 0,                   -- Out NFC (shipped)
+    cs_nfc DECIMAL(15,2) DEFAULT 0,                    -- Closing stock NFC
+    max_supply_nfc DECIMAL(15,2) DEFAULT 0,            -- Max supply NFC
+    
+    os_x DECIMAL(15,2) DEFAULT 0,                      -- Opening stock X
+    in_x DECIMAL(15,2) DEFAULT 0,                      -- In X (produced)
+    out_x DECIMAL(15,2) DEFAULT 0,                     -- Out X (shipped)
+    cs_x DECIMAL(15,2) DEFAULT 0,                      -- Closing stock X
+    max_supply_x DECIMAL(15,2) DEFAULT 0,              -- Max supply X
+    
+    -- Total columns
+    os_tot DECIMAL(15,2) DEFAULT 0,                    -- Total opening stock
+    in_tot DECIMAL(15,2) DEFAULT 0,                    -- Total in (produced)
+    out_tot DECIMAL(15,2) DEFAULT 0,                   -- Total out (shipped)
+    cs_tot DECIMAL(15,2) DEFAULT 0,                    -- Total closing stock
+    max_supply_tot DECIMAL(15,2) DEFAULT 0,            -- Max supply total
+    
+    -- Weight columns
+    cs_wt_gfc DECIMAL(15,4) DEFAULT 0,                 -- Closing stock weight GFC
+    cs_wt_kfc DECIMAL(15,4) DEFAULT 0,                 -- Closing stock weight KFC
+    cs_wt_nfc DECIMAL(15,4) DEFAULT 0,                 -- Closing stock weight NFC
+    
+    -- Additional calculated columns
+    final_norm DECIMAL(15,2) DEFAULT 0,                -- Final norm
+    avg_stock DECIMAL(15,2) DEFAULT 0,                 -- Average stock
+    
+    -- Supply constraint columns
+    supply_gfc DECIMAL(15,2) DEFAULT 0,                -- Supply GFC (constrained)
+    supply_kfc DECIMAL(15,2) DEFAULT 0,                -- Supply KFC (constrained)
+    supply_nfc DECIMAL(15,2) DEFAULT 0,                -- Supply NFC (constrained)
+    supply_x DECIMAL(15,2) DEFAULT 0,                  -- Supply X (constrained)
+    
+    -- Constraint validation columns
+    os_ge_min BOOLEAN DEFAULT TRUE,                    -- OS >= Min
+    os_le_max BOOLEAN DEFAULT TRUE,                    -- OS <= Max  
+    cs_ge_min BOOLEAN DEFAULT TRUE,                    -- CS >= Min
+    cs_le_max BOOLEAN DEFAULT TRUE,                    -- CS <= Max
+    
+    -- Cost columns
+    storage_cost DECIMAL(15,4) DEFAULT 0,              -- Storage cost
+    icc DECIMAL(15,4) DEFAULT 0,                       -- ICC
+    row_cost DECIMAL(15,4) DEFAULT 0,                  -- Row cost
+    storage_cost_v2 DECIMAL(15,4) DEFAULT 0,           -- Storage cost V2
+    
+    workbook_id UUID REFERENCES workbooks(id) ON DELETE CASCADE,  -- Reference to source workbook
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Constraints
+    CONSTRAINT t04_qty_positive CHECK (mto_demand_next_month >= 0),
+    CONSTRAINT t04_mts_positive CHECK (mts_demand_next_month >= 0),
+    CONSTRAINT t04_wh_valid CHECK (wh IN ('GFCM', 'KFCM', 'NFCM', 'X'))
+);
+
+-- Indexes for T04_WHBal table
+CREATE INDEX IF NOT EXISTS idx_t04_sku_month ON t04_whbal(fg_sku_code, mth_num);
+CREATE INDEX IF NOT EXISTS idx_t04_warehouse ON t04_whbal(wh);
+CREATE INDEX IF NOT EXISTS idx_t04_workbook ON t04_whbal(workbook_id);
+CREATE INDEX IF NOT EXISTS idx_t04_sku_wh_month ON t04_whbal(fg_sku_code, wh, mth_num);
+
+-- Trigger to update updated_at for T04_WHBal table
+CREATE TRIGGER update_t04_whbal_updated_at BEFORE UPDATE ON t04_whbal FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 

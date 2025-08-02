@@ -1,0 +1,161 @@
+{
+  "tableName": "T03_PrimDist",
+  "description": "Primary Distribution Table - Maps SKUs to warehouses and factories with transformation logic",
+  "dataSources": [
+    "Demand.xlsx",
+    "Freight_storage_costs.xlsx",
+    "Customs.xlsx",
+    "NA",
+    "Item master"
+  ],
+  "transformationSteps": [
+    {
+      "column": "WH",
+      "logic": "i. For each filtered SKU in demand.xlsx, check which factory has capacity>0 in base config / line SKU production"
+    },
+    {
+      "column": "PLT",
+      "logic": "ii. For every SKU factory combination - add 3 rows per month where PLT = the factory which it can be produced in and WH = GFCM/KFCM/NFCM"
+    },
+    {
+      "column": "CostPerUnit",
+      "logic": "Freight Cost per truckload/Qty per truckload"
+    },
+    {
+      "column": "Custom Cost/Unit",
+      "logic": "Custom Duty = [ Average RM price for that FG SKU (basis BOM-1 from BOM module) + freight cost of that lane + factory overheads (using the budget file) ] x ICP x Custom Duty %"
+    },
+    {
+      "column": "MaxQty",
+      "logic": "Set as 10^10 for max qty or to enable a lane"
+    },
+    {
+      "column": "FGWtPerUnit",
+      "logic": "Direct lookup from item master based on SKU Code"
+    },
+    {
+      "column": "Qty",
+      "logic": "NA"
+    },
+    {
+      "column": "Wt",
+      "logic": "Formula to be added for all rows as = \"Qty x FGWtPerUnit\""
+    },
+    {
+      "column": "Custom Duty",
+      "logic": "Formula to be added for all rows as = \"Qty x Custom Cost/Unit\""
+    },
+    {
+      "column": "Poscheck",
+      "logic": "NA"
+    },
+    {
+      "column": "Qty<=Max",
+      "logic": "Formula to be added for all rows as: \" =@WB(Qty,\">=\",0)\""
+    },
+    {
+      "column": "RowCost",
+      "logic": "Formula to be added for all rows as: \" =@WB(Qty,\"<=\",MaxQty)\""
+    }
+  ],
+  "columns": [
+    {
+      "name": "WH",
+      "sqlType": "VARCHAR(10)",
+      "position": 2,
+      "description": "Destination warehouse",
+      "required": true
+    },
+    {
+      "name": "PLT",
+      "sqlType": "VARCHAR(10)",
+      "position": 3,
+      "description": "Factory delivering to the destination warehouse",
+      "required": true
+    },
+    {
+      "name": "FGSKUCode",
+      "sqlType": "VARCHAR(50)",
+      "position": 4,
+      "description": "SKU Code",
+      "required": true
+    },
+    {
+      "name": "MthNum",
+      "sqlType": "INTEGER",
+      "position": 5,
+      "description": "Month  (all months are 1-12 in model regardless of the cycle month)",
+      "required": true
+    },
+    {
+      "name": "CostPerUnit",
+      "sqlType": "VARCHAR(100)",
+      "position": 6,
+      "description": "Primary distribution freight cost/unit",
+      "required": true
+    },
+    {
+      "name": "Custom Cost/Unit",
+      "sqlType": "VARCHAR(50)",
+      "position": 7,
+      "description": "Custom cost per unit SKU for international shipping",
+      "required": true
+    },
+    {
+      "name": "MaxQty",
+      "sqlType": "VARCHAR(100)",
+      "position": 8,
+      "description": "Quantity to enable/disable any primary shipping lane",
+      "required": true
+    },
+    {
+      "name": "FGWtPerUnit",
+      "sqlType": "VARCHAR(100)",
+      "position": 9,
+      "description": "Finished good weight per unit",
+      "required": true
+    },
+    {
+      "name": "Qty",
+      "sqlType": "VARCHAR(10)",
+      "position": 10,
+      "description": "Shipped quantity from source factory to destination warehouse",
+      "required": true
+    },
+    {
+      "name": "Wt",
+      "sqlType": "VARCHAR(10)",
+      "position": 11,
+      "description": "Shipped weight from source factory to destination warehouse",
+      "required": true
+    },
+    {
+      "name": "Custom Duty",
+      "sqlType": "TEXT",
+      "position": 12,
+      "description": "Total custom duty cost",
+      "required": true
+    },
+    {
+      "name": "Poscheck",
+      "sqlType": "TEXT",
+      "position": 13,
+      "description": "Shipped qty >= 0",
+      "required": true
+    },
+    {
+      "name": "Qty<=Max",
+      "sqlType": "TEXT",
+      "position": 14,
+      "description": "Shipped qty <= MaxQty",
+      "required": true
+    },
+    {
+      "name": "RowCost",
+      "sqlType": "TEXT",
+      "position": 15,
+      "description": "Total primary shipping cost per unit",
+      "required": true
+    }
+  ]
+}

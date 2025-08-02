@@ -197,6 +197,114 @@ export const t02API = {
   })
 };
 
+// T03 API
+export const t03API = {
+  getT03Data: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    return api.get(`/t03?${params}`);
+  },
+  
+  getT03Summary: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    return api.get(`/t03/summary?${params}`);
+  },
+  
+  processT03Data: async (sourceWorkbooks) => {
+    return api.post('/t03/process', { sourceWorkbooks });
+  },
+  
+  updateT03Quantity: async (id, qty) => {
+    return api.put(`/t03/${id}/quantity`, { qty });
+  },
+  
+  getT03BySKU: async (skuCode, workbookId = null) => {
+    const params = workbookId ? `?workbook_id=${workbookId}` : '';
+    return api.get(`/t03/sku/${skuCode}${params}`);
+  },
+  
+  getT03ByFactory: async (factory, workbookId = null) => {
+    const params = workbookId ? `?workbook_id=${workbookId}` : '';
+    return api.get(`/t03/factory/${factory}${params}`);
+  },
+  
+  getT03ByWarehouse: async (warehouse, workbookId = null) => {
+    const params = workbookId ? `?workbook_id=${workbookId}` : '';
+    return api.get(`/t03/warehouse/${warehouse}${params}`);
+  },
+  
+  deleteT03Data: async (workbookId) => {
+    return api.delete(`/t03/workbook/${workbookId}`);
+  },
+  
+  recalculateT03: async (workbookId = null) => {
+    const params = workbookId ? `?workbook_id=${workbookId}` : '';
+    return api.post(`/t03/recalculate${params}`);
+  }
+};
+
+// T03 helper functions
+export const downloadT03Data = async (id) => {
+  try {
+    const response = await api.get(`/export/t03/${id}`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([response], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+    downloadFile(blob, `T03_data_${id}.xlsx`);
+  } catch (error) {
+    console.error('Error downloading T03 data:', error);
+    throw error;
+  }
+};
+
+export const processT03Data = async (sourceWorkbooks) => {
+  try {
+    return await t03API.processT03Data(sourceWorkbooks);
+  } catch (error) {
+    console.error('Error processing T03 data:', error);
+    throw error;
+  }
+};
+
+// T04 API
+export const t04API = {
+  getT04Data: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    return api.get(`/t04?${params}`);
+  },
+  
+  getT04Summary: async () => {
+    return api.get('/t04/summary');
+  },
+  
+  processT04Data: async (sourceWorkbooks) => {
+    return api.post('/t04/process', { sourceWorkbooks });
+  },
+  
+  recalculateT04: async () => {
+    return api.post('/t04/recalculate');
+  },
+  
+  updateT04Field: async (id, field, value) => {
+    return api.put(`/t04/${id}/field`, { field, value });
+  },
+  
+  getT04BySKU: async (skuCode, workbookId = null) => {
+    const params = workbookId ? `?workbook_id=${workbookId}` : '';
+    return api.get(`/t04/sku/${skuCode}${params}`);
+  },
+  
+  getT04ByWarehouse: async (warehouse, workbookId = null) => {
+    const params = workbookId ? `?workbook_id=${workbookId}` : '';
+    return api.get(`/t04/warehouse/${warehouse}${params}`);
+  },
+  
+  deleteT04Data: async (workbookId) => {
+    return api.delete(`/t04/workbook/${workbookId}`);
+  }
+};
+
 // Utility functions
 export const downloadFile = (blob, filename) => {
   const url = window.URL.createObjectURL(blob);

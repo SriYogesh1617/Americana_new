@@ -47,6 +47,8 @@ app.use('/api/raw-data', require('./routes/rawDataRoutes'));
 app.use('/api/cursor', require('./routes/cursorRoutes'));
 app.use('/api/t01', require('./routes/t01Routes'));
 app.use('/api/t02', require('./routes/t02Routes'));
+app.use('/api/t03', require('./routes/t03Routes'));
+app.use('/api/t04', require('./routes/t04Routes'));
 
 // Health check
 app.get('/health', (req, res) => {

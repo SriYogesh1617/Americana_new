@@ -573,49 +573,49 @@ const T02Data = () => {
               <thead>
                 <tr>
                   <Th>CTY</Th>
-                  <Th>FGSKU Code</Th>
-                  <Th>Month</Th>
-                  <Th>Market</Th>
                   <Th>WH</Th>
                   <Th>Default WH Restrictions</Th>
-                  <Th>SKU Specific Restrictions</Th>
-                  <Th>Trim SKU</Th>
-                  <Th>RM SKU</Th>
+                  <Th>SKU specific Restrictions</Th>
+                  <Th>FGSKUCode</Th>
+                  <Th>TrimSKU</Th>
+                  <Th>RMSKU</Th>
+                  <Th>MthNum</Th>
+                  <Th>Market</Th>
                   <Th>Customs?</Th>
-                  <Th>Transport Cost/Case</Th>
-                  <Th>Max GFC</Th>
-                  <Th>Max KFC</Th>
-                  <Th>Max NFC</Th>
-                  <Th>FGWt Per Unit</Th>
+                  <Th>TransportCostPerCase</Th>
+                  <Th>Max_GFC</Th>
+                  <Th>Max_KFC</Th>
+                  <Th>Max_NFC</Th>
+                  <Th>FGWtPerUnit</Th>
                   <Th>Custom Cost/Unit - GFC</Th>
                   <Th>Custom Cost/Unit - KFC</Th>
                   <Th>Custom Cost/Unit - NFC</Th>
-                  <Th>Max Arbit</Th>
+                  <Th>Max_Arbit</Th>
                   <Th>D10</Th>
-                  <Th>Qty GFC</Th>
-                  <Th>Qty KFC</Th>
-                  <Th>Qty NFC</Th>
-                  <Th>Qty X</Th>
+                  <Th>Qty_GFC</Th>
+                  <Th>Qty_KFC</Th>
+                  <Th>Qty_NFC</Th>
+                  <Th>Qty_X</Th>
                   <Th>V05</Th>
                   <Th>V06</Th>
-                  <Th>Qty Total</Th>
-                  <Th>Wt GFC</Th>
-                  <Th>Wt KFC</Th>
-                  <Th>Wt NFC</Th>
+                  <Th>Qty_Total</Th>
+                  <Th>Wt_GFC</Th>
+                  <Th>Wt_KFC</Th>
+                  <Th>Wt_NFC</Th>
                   <Th>Custom Duty</Th>
                   <Th>F06</Th>
                   <Th>F07</Th>
                   <Th>F08</Th>
                   <Th>F09</Th>
                   <Th>F10</Th>
-                  <Th>Max GFC 2</Th>
-                  <Th>Max KFC 2</Th>
-                  <Th>Max NFC 2</Th>
-                  <Th>Pos GFC</Th>
-                  <Th>Pos KFC</Th>
-                  <Th>Pos NFC</Th>
-                  <Th>Pos X</Th>
-                  <Th>Max X</Th>
+                  <Th>Max_GFC</Th>
+                  <Th>Max_KFC</Th>
+                  <Th>Max_NFC</Th>
+                  <Th>Pos_GFC</Th>
+                  <Th>Pos_KFC</Th>
+                  <Th>Pos_NFC</Th>
+                  <Th>Pos_X</Th>
+                  <Th>Max_X</Th>
                   <Th>C09</Th>
                   <Th>C10</Th>
                   <Th>OF01</Th>
@@ -623,21 +623,21 @@ const T02Data = () => {
                   <Th>OF03</Th>
                   <Th>OF04</Th>
                   <Th>OF05</Th>
-                  <Th>Row Cost</Th>
+                  <Th>RowCost</Th>
                 </tr>
               </thead>
               <tbody>
                 {t02Data.data.map((record) => (
                   <Tr key={record.id}>
                     <Td>{record.cty}</Td>
-                    <Td>{record.fgsku_code}</Td>
-                    <Td>{record.month}</Td>
-                    <Td>{record.market}</Td>
                     <Td>{record.wh}</Td>
                     <Td>{record.default_wh_restrictions}</Td>
                     <Td>{record.sku_specific_restrictions}</Td>
+                    <Td>{record.fgsku_code}</Td>
                     <Td>{record.trim_sku}</Td>
                     <Td>{record.rm_sku}</Td>
+                    <Td>{record.month}</Td>
+                    <Td>{record.market}</Td>
                     <Td>{record.customs}</Td>
                     <Td>{record.transport_cost_per_case}</Td>
                     <Td>{record.max_gfc}</Td>

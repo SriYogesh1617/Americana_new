@@ -125,4 +125,15 @@ test_*.xlsx
 *_export.xlsx
 # Excel temporary files
 ~$*.xlsx
-~$*.xls 
+~$*.xls
+
+# Database dumps and large files
+db_dumps/
+*.backup
+*.tar.gz
+frontend/public.zip
+
+# Large database files
+*_complete_*.sql
+*_full_*.backup
+*_dumps_*.tar.gz 

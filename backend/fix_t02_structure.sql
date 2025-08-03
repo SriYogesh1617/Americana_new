@@ -30,23 +30,15 @@ CREATE TABLE t02_data (
     custom_cost_per_unit_kfc DECIMAL(15,2), -- Custom Cost/Unit - KFC
     custom_cost_per_unit_nfc DECIMAL(15,2), -- Custom Cost/Unit - NFC
     max_arbit DECIMAL(15,2), -- Max_Arbit
-    d10 DECIMAL(15,2), -- D10
     qty_gfc DECIMAL(15,2), -- Qty_GFC
     qty_kfc DECIMAL(15,2), -- Qty_KFC
     qty_nfc DECIMAL(15,2), -- Qty_NFC
     qty_x DECIMAL(15,2), -- Qty_X
-    v05 DECIMAL(15,2), -- V05
-    v06 DECIMAL(15,2), -- V06
     qty_total DECIMAL(15,2), -- Qty_Total (changed from TEXT to DECIMAL)
     wt_gfc DECIMAL(15,2), -- Wt_GFC (changed from TEXT to DECIMAL)
     wt_kfc DECIMAL(15,2), -- Wt_KFC (changed from TEXT to DECIMAL)
     wt_nfc DECIMAL(15,2), -- Wt_NFC (changed from TEXT to DECIMAL)
     custom_duty DECIMAL(15,2), -- Custom Duty (changed from TEXT to DECIMAL)
-    f06 DECIMAL(15,2), -- F06
-    f07 DECIMAL(15,2), -- F07
-    f08 DECIMAL(15,2), -- F08
-    f09 DECIMAL(15,2), -- F09
-    f10 DECIMAL(15,2), -- F10
     max_gfc_2 DECIMAL(15,2), -- Max_GFC (second occurrence) (changed from TEXT to DECIMAL)
     max_kfc_2 DECIMAL(15,2), -- Max_KFC (second occurrence) (changed from TEXT to DECIMAL)
     max_nfc_2 DECIMAL(15,2), -- Max_NFC (second occurrence) (changed from TEXT to DECIMAL)
@@ -55,13 +47,6 @@ CREATE TABLE t02_data (
     pos_nfc VARCHAR(255), -- Pos_NFC (changed from TEXT to VARCHAR for formula storage)
     pos_x VARCHAR(255), -- Pos_X (changed from TEXT to VARCHAR for formula storage)
     max_x VARCHAR(255), -- Max_X (changed from TEXT to VARCHAR for formula storage)
-    c09 DECIMAL(15,2), -- C09
-    c10 DECIMAL(15,2), -- C10
-    of01 DECIMAL(15,2), -- OF01
-    of02 DECIMAL(15,2), -- OF02
-    of03 DECIMAL(15,2), -- OF03
-    of04 DECIMAL(15,2), -- OF04
-    of05 DECIMAL(15,2), -- OF05
     row_cost VARCHAR(255), -- RowCost (changed from TEXT to VARCHAR for formula storage)
     -- Additional system columns
     upload_batch_id UUID,

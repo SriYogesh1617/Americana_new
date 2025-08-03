@@ -6,7 +6,9 @@ const {
   getT01Stats,
   clearT01Data,
   getT01DataAsArray,
-  exportT01ToExcel
+  exportT01ToExcel,
+  updateSupplyValues,
+  removeDuplicates
 } = require('../controllers/t01Controller');
 
 // Calculate T01 data from cursor tables
@@ -26,5 +28,11 @@ router.delete('/clear', clearT01Data);
 
 // Export T01 data to Excel file
 router.get('/export', exportT01ToExcel);
+
+// Update Supply values with calculated T02 data
+router.put('/update-supply/:uploadBatchId', updateSupplyValues);
+
+// Remove duplicate T01 records
+router.delete('/remove-duplicates/:uploadBatchId', removeDuplicates);
 
 module.exports = router; 

@@ -17,6 +17,7 @@ import T01Data from './pages/T01Data';
 import T02Data from './pages/T02Data';
 import T03Data from './pages/T03Data';
 import T04Data from './pages/T04Data';
+import ItemMaster from './pages/ItemMaster';
 
 const AppContainer = styled.div`
   display: flex;
@@ -58,6 +59,7 @@ function App() {
             <Route path="/t02-data" element={<T02Data />} />
             <Route path="/t03-data" element={<T03Data />} />
             <Route path="/t04-data" element={<T04Data />} />
+            <Route path="/item-master" element={<ItemMaster />} />
           </Routes>
         </ContentArea>
       </MainContent>

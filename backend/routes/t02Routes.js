@@ -6,7 +6,8 @@ const {
   getT02Stats,
   clearT02Data,
   getT02DataAsArray,
-  exportT02ToExcel
+  exportT02ToExcel,
+  exportCombinedToExcel
 } = require('../controllers/t02Controller');
 
 // Calculate T02 data from T01 data
@@ -26,5 +27,8 @@ router.delete('/clear', clearT02Data);
 
 // Export T02 data to Excel file
 router.get('/export', exportT02ToExcel);
+
+// Export combined T01 and T02 data to single XLSM file
+router.get('/export-combined', exportCombinedToExcel);
 
 module.exports = router; 

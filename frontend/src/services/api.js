@@ -194,6 +194,9 @@ export const t02API = {
   getT02DataAsArray: (params) => api.get('/t02/data/array', { params }),
   exportT02ToExcel: (uploadBatchId) => api.get(`/t02/export?uploadBatchId=${uploadBatchId}`, {
     responseType: 'blob',
+  }),
+  exportCombinedToExcel: (uploadBatchId) => api.get(`/t02/export-combined?uploadBatchId=${uploadBatchId}`, {
+    responseType: 'blob',
   })
 };
 
@@ -315,6 +318,19 @@ export const downloadFile = (blob, filename) => {
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
+};
+
+// Item Master API
+export const itemMasterAPI = {
+  exportToCSV: async () => {
+    const response = await api.get('/item-master/export-csv', {
+      responseType: 'blob'
+    });
+    return response;
+  },
+  
+  getData: () => api.get('/item-master/data'),
+  getStats: () => api.get('/item-master/stats')
 };
 
 export default api; 

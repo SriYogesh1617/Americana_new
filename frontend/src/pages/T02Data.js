@@ -341,7 +341,7 @@ const T02Data = () => {
     t02API.exportT02ToExcel,
     {
       onSuccess: (blob) => {
-        const filename = `T02_Data_${selectedUploadBatch}_${Date.now()}.xlsx`;
+        const filename = `T_02_${selectedUploadBatch}_${Date.now()}.xlsx`;
         downloadFile(blob, filename);
         setMessage({
           type: 'success',
@@ -352,6 +352,27 @@ const T02Data = () => {
         setMessage({
           type: 'error',
           text: `Failed to export T02 data: ${error.response?.data?.details || error.message}`
+        });
+      }
+    }
+  );
+
+  // Export combined T01 and T02 data to single XLSM file mutation
+  const exportCombinedMutation = useMutation(
+    t02API.exportCombinedToExcel,
+    {
+      onSuccess: (blob) => {
+        const filename = `T01_T02_Combined_${selectedUploadBatch}_${Date.now()}.xlsm`;
+        downloadFile(blob, filename);
+        setMessage({
+          type: 'success',
+          text: 'Combined T01 & T02 data exported to XLSM successfully!'
+        });
+      },
+      onError: (error) => {
+        setMessage({
+          type: 'error',
+          text: `Failed to export combined data: ${error.response?.data?.details || error.message}`
         });
       }
     }
@@ -383,6 +404,17 @@ const T02Data = () => {
       return;
     }
     exportMutation.mutate(selectedUploadBatch);
+  };
+
+  const handleExportCombined = () => {
+    if (!selectedUploadBatch) {
+      setMessage({
+        type: 'error',
+        text: 'Please select an upload batch first.'
+      });
+      return;
+    }
+    exportCombinedMutation.mutate(selectedUploadBatch);
   };
 
   const handleUploadBatchChange = (batchId) => {
@@ -465,7 +497,14 @@ const T02Data = () => {
             onClick={handleExport}
             disabled={!selectedUploadBatch || exportMutation.isLoading}
           >
-            {exportMutation.isLoading ? 'Exporting...' : 'Export to Excel'}
+            {exportMutation.isLoading ? 'Exporting...' : 'Export T02 Only'}
+          </Button>
+          <Button
+            className="info"
+            onClick={handleExportCombined}
+            disabled={!selectedUploadBatch || exportCombinedMutation.isLoading}
+          >
+            {exportCombinedMutation.isLoading ? 'Exporting...' : 'Export T01+T02 XLSM'}
           </Button>
           <Button
             className="danger"
@@ -591,23 +630,15 @@ const T02Data = () => {
                   <Th>Custom Cost/Unit - KFC</Th>
                   <Th>Custom Cost/Unit - NFC</Th>
                   <Th>Max_Arbit</Th>
-                  <Th>D10</Th>
                   <Th>Qty_GFC</Th>
                   <Th>Qty_KFC</Th>
                   <Th>Qty_NFC</Th>
                   <Th>Qty_X</Th>
-                  <Th>V05</Th>
-                  <Th>V06</Th>
                   <Th>Qty_Total</Th>
                   <Th>Wt_GFC</Th>
                   <Th>Wt_KFC</Th>
                   <Th>Wt_NFC</Th>
                   <Th>Custom Duty</Th>
-                  <Th>F06</Th>
-                  <Th>F07</Th>
-                  <Th>F08</Th>
-                  <Th>F09</Th>
-                  <Th>F10</Th>
                   <Th>Max_GFC</Th>
                   <Th>Max_KFC</Th>
                   <Th>Max_NFC</Th>
@@ -616,13 +647,6 @@ const T02Data = () => {
                   <Th>Pos_NFC</Th>
                   <Th>Pos_X</Th>
                   <Th>Max_X</Th>
-                  <Th>C09</Th>
-                  <Th>C10</Th>
-                  <Th>OF01</Th>
-                  <Th>OF02</Th>
-                  <Th>OF03</Th>
-                  <Th>OF04</Th>
-                  <Th>OF05</Th>
                   <Th>RowCost</Th>
                 </tr>
               </thead>
@@ -648,23 +672,15 @@ const T02Data = () => {
                     <Td>{record.custom_cost_per_unit_kfc}</Td>
                     <Td>{record.custom_cost_per_unit_nfc}</Td>
                     <Td>{record.max_arbit}</Td>
-                    <Td>{record.d10}</Td>
                     <Td>{record.qty_gfc}</Td>
                     <Td>{record.qty_kfc}</Td>
                     <Td>{record.qty_nfc}</Td>
                     <Td>{record.qty_x}</Td>
-                    <Td>{record.v05}</Td>
-                    <Td>{record.v06}</Td>
                     <Td>{record.qty_total}</Td>
                     <Td>{record.wt_gfc}</Td>
                     <Td>{record.wt_kfc}</Td>
                     <Td>{record.wt_nfc}</Td>
                     <Td>{record.custom_duty}</Td>
-                    <Td>{record.f06}</Td>
-                    <Td>{record.f07}</Td>
-                    <Td>{record.f08}</Td>
-                    <Td>{record.f09}</Td>
-                    <Td>{record.f10}</Td>
                     <Td>{record.max_gfc_2}</Td>
                     <Td>{record.max_kfc_2}</Td>
                     <Td>{record.max_nfc_2}</Td>
@@ -673,13 +689,6 @@ const T02Data = () => {
                     <Td>{record.pos_nfc}</Td>
                     <Td>{record.pos_x}</Td>
                     <Td>{record.max_x}</Td>
-                    <Td>{record.c09}</Td>
-                    <Td>{record.c10}</Td>
-                    <Td>{record.of01}</Td>
-                    <Td>{record.of02}</Td>
-                    <Td>{record.of03}</Td>
-                    <Td>{record.of04}</Td>
-                    <Td>{record.of05}</Td>
                     <Td>{record.row_cost}</Td>
                   </Tr>
                 ))}

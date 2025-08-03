@@ -239,6 +239,7 @@ class T01Data {
       
       // Create lookup maps
       const productionEnvironmentLookup = new Map();
+      const capacityLookup = new Map(); // For inventory days lookup
       const capacityRows = new Map();
       
       // Process capacity data
@@ -249,15 +250,22 @@ class T01Data {
         capacityRows.get(cell.row_index)[cell.column_index] = cell.cell_value;
       }
       
-      // Create production environment lookup
+      // Create production environment and inventory days lookups
       for (const [rowIndex, rowData] of capacityRows) {
         if (rowIndex < 2) continue; // Skip header rows
         
         const fgskuCode = rowData[1]; // Item column
         const productionEnvironment = rowData[9]; // Production environment column
+        const inventoryDays = rowData[13]; // Required opening stock (Days) column
         
         if (fgskuCode && productionEnvironment) {
           productionEnvironmentLookup.set(fgskuCode.trim(), productionEnvironment.trim());
+          
+          // Create inventory days lookup with SKU + Production Environment as key
+          if (inventoryDays) {
+            const lookupKey = `${fgskuCode.trim()}_${productionEnvironment.trim()}`;
+            capacityLookup.set(lookupKey, parseFloat(inventoryDays) || 0);
+          }
         }
       }
 
@@ -445,20 +453,31 @@ class T01Data {
            const monthKey = `${cty}_${fgskuCode}_${monthStr}`;
            const demandValue = demandDataByCombination.get(monthKey) || 0;
            
-           // Calculate safety stock and inventory days
-           let safetyStockWh = 'NA-MTO'; // Default for others
-           if (cty === 'KSA') {
-             safetyStockWh = 'NFCM';
-           } else if (cty === 'Kuwait') {
-             safetyStockWh = 'KFCM';
-           } else if (cty === 'UAE-FS' || cty === 'UAE FS') {
-             safetyStockWh = 'GFCM';
-           }
-           const inventoryDaysNorm = 0.00;
+                     // Calculate safety stock and inventory days
+          let safetyStockWh = 'NA-MTO'; // Default for others
+          if (cty === 'KSA') {
+            safetyStockWh = 'NFCM';
+          } else if (cty === 'Kuwait') {
+            safetyStockWh = 'KFCM';
+          } else if (cty === 'UAE-FS' || cty === 'UAE FS') {
+            safetyStockWh = 'GFCM';
+          }
+          
+          // Lookup inventory days from capacity data
+          let inventoryDaysNorm = 0.00;
+          if (productionEnvironmentValue === 'MTS') {
+            const capacityLookupKey = `${fgskuCode}_${productionEnvironmentValue}`;
+            inventoryDaysNorm = capacityLookup.get(capacityLookupKey) || 0.00;
+          }
            
-           // Calculate supply (T02 formula) - using correct row numbers starting from 2
+           // Calculate supply (T02 formula) - Sum of T02 Qty_Total for matching CTY, FGSKUCode, Month
            const excelRowNumber = rowCounter; // Use rowCounter for row numbering
-           const supply = `T_02!V${164000 + excelRowNumber * 12}+T_02!V${164001 + excelRowNumber * 12}+T_02!V${164002 + excelRowNumber * 12}+T_02!V${164003 + excelRowNumber * 12}`;
+           
+           // Create a lookup key for this T01 record
+           const t01LookupKey = `${cty}_${fgskuCode}_${monthStr}`;
+           
+           // Set initial supply to 0 - will be updated after T02 calculation
+           const supply = '0';
            
            // Calculate Cons formula with correct row numbers starting from row 2
            const demandCasesCell = `D${excelRowNumber}`;
@@ -486,11 +505,30 @@ class T01Data {
 
        console.log(`Generated ${allCombinations.length} records`);
 
-      // Step 6: Batch insert all records
-      console.log('📊 Step 6: Batch inserting records...');
-      if (allCombinations.length > 0) {
-        await this.batchCreateWithClient(client, allCombinations);
+      // Step 6: Remove duplicates and batch insert records
+      console.log('📊 Step 6: Removing duplicates and batch inserting records...');
+      
+      // Remove duplicates based on CTY + FGSKU + Month combination
+      const uniqueRecords = new Map();
+      for (const record of allCombinations) {
+        const key = `${record.cty}_${record.fgsku_code}_${record.month}`;
+        if (!uniqueRecords.has(key)) {
+          uniqueRecords.set(key, record);
+        } else {
+          console.log(`⚠️ Removing duplicate: ${key}`);
+        }
       }
+      
+      const finalRecords = Array.from(uniqueRecords.values());
+      console.log(`📊 Original records: ${allCombinations.length}, After deduplication: ${finalRecords.length}`);
+      
+      if (finalRecords.length > 0) {
+        await this.batchCreateWithClient(client, finalRecords);
+      }
+
+      // Step 7: Update Supply formulas with actual T02 row references
+      console.log('📊 Step 7: Updating Supply formulas with T02 row mapping...');
+      await this.updateSupplyFormulasWithT02Mapping(client, uploadBatchId);
 
       await client.query('COMMIT');
       
@@ -504,6 +542,262 @@ class T01Data {
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('❌ Error in T01 calculation:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Update Supply formulas with actual T02 row references
+  static async updateSupplyFormulasWithT02Mapping(client, uploadBatchId) {
+    try {
+      // Get all T01 records that need Supply formula updates
+      const t01Records = await client.query(`
+        SELECT id, cty, fgsku_code, month, supply
+        FROM t01_data 
+        WHERE upload_batch_id = $1 
+        ORDER BY id
+      `, [uploadBatchId]);
+
+      console.log(`Found ${t01Records.rows.length} T01 records to update`);
+
+      // Get all T02 records with their row numbers
+      const t02Records = await client.query(`
+        SELECT cty, fgsku_code, month, 
+               ROW_NUMBER() OVER (ORDER BY id) + 1 as excel_row_number
+        FROM t02_data 
+        WHERE upload_batch_id = $1
+        ORDER BY id
+      `, [uploadBatchId]);
+
+      console.log(`Found ${t02Records.rows.length} T02 records for mapping`);
+
+      // Create T02 mapping: key -> array of row numbers
+      const t02Mapping = new Map();
+      for (const t02Row of t02Records.rows) {
+        const key = `${t02Row.cty}_${t02Row.fgsku_code}_${t02Row.month}`;
+        if (!t02Mapping.has(key)) {
+          t02Mapping.set(key, []);
+        }
+        t02Mapping.get(key).push(t02Row.excel_row_number);
+      }
+
+      // Update each T01 record with correct Supply formula
+      for (const t01Row of t01Records.rows) {
+        const lookupKey = `${t01Row.cty}_${t01Row.fgsku_code}_${t01Row.month}`;
+        const t02Rows = t02Mapping.get(lookupKey) || [];
+        
+        let supplyFormula;
+        if (t02Rows.length === 0) {
+          // No matching T02 rows
+          supplyFormula = '0';
+        } else if (t02Rows.length === 1) {
+          // Single T02 row
+          supplyFormula = `=T_02!X${t02Rows[0]}`;
+        } else {
+          // Multiple T02 rows - sum them
+          const cellReferences = t02Rows.map(rowNum => `T_02!X${rowNum}`);
+          supplyFormula = `=${cellReferences.join('+')}`;
+        }
+
+        // Update the T01 record
+        await client.query(`
+          UPDATE t01_data 
+          SET supply = $1 
+          WHERE id = $2
+        `, [supplyFormula, t01Row.id]);
+      }
+
+      console.log(`✅ Updated ${t01Records.rows.length} T01 Supply formulas`);
+      
+      // Log some examples
+      if (t01Records.rows.length > 0) {
+        const examples = await client.query(`
+          SELECT cty, fgsku_code, month, supply
+          FROM t01_data 
+          WHERE upload_batch_id = $1 
+          LIMIT 5
+        `, [uploadBatchId]);
+        
+        console.log('📋 Example Supply formulas:');
+        examples.rows.forEach((row, i) => {
+          console.log(`  ${i+1}. ${row.cty}|${row.fgsku_code}|${row.month} -> ${row.supply}`);
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Error updating Supply formulas:', error);
+      throw error;
+    }
+  }
+
+  // Remove duplicate T01 records
+  static async removeDuplicates(uploadBatchId) {
+    const { pool } = require('../config/database');
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      console.log('🧹 Starting duplicate removal for T01 data...');
+      
+      // Get all T01 records for this upload batch
+      const allRecords = await client.query(`
+        SELECT id, cty, fgsku_code, month, created_at
+        FROM t01_data 
+        WHERE upload_batch_id = $1 
+        ORDER BY cty, fgsku_code, month, created_at
+      `, [uploadBatchId]);
+
+      console.log(`Found ${allRecords.rows.length} total T01 records`);
+
+      // Group records by CTY + FGSKU + Month combination
+      const groupedRecords = new Map();
+      for (const record of allRecords.rows) {
+        const key = `${record.cty}_${record.fgsku_code}_${record.month}`;
+        if (!groupedRecords.has(key)) {
+          groupedRecords.set(key, []);
+        }
+        groupedRecords.get(key).push(record);
+      }
+
+      // Find and remove duplicates (keep the first record, delete the rest)
+      let duplicatesRemoved = 0;
+      for (const [key, records] of groupedRecords) {
+        if (records.length > 1) {
+          console.log(`Found ${records.length} duplicates for ${key}, keeping first, removing ${records.length - 1}`);
+          
+          // Keep the first record (earliest created_at), delete the rest
+          const recordsToDelete = records.slice(1);
+          const idsToDelete = recordsToDelete.map(r => r.id);
+          
+          const deleteResult = await client.query(`
+            DELETE FROM t01_data 
+            WHERE id = ANY($1)
+          `, [idsToDelete]);
+          
+          duplicatesRemoved += deleteResult.rowCount;
+        }
+      }
+
+      await client.query('COMMIT');
+      
+      console.log(`✅ Removed ${duplicatesRemoved} duplicate T01 records`);
+      
+      return {
+        success: true,
+        duplicatesRemoved,
+        message: `Removed ${duplicatesRemoved} duplicate T01 records`
+      };
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('❌ Error removing duplicates:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Standalone method to update Supply formulas with T02 row references
+  static async updateSupplyValuesWithT02Data(uploadBatchId) {
+    const { pool } = require('../config/database');
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      console.log('🔄 Starting Supply formula generation from T02 data...');
+      
+      // Get all T01 records
+      const t01Records = await client.query(`
+        SELECT id, cty, fgsku_code, month, supply
+        FROM t01_data 
+        WHERE upload_batch_id = $1 
+        ORDER BY id
+      `, [uploadBatchId]);
+
+      console.log(`Found ${t01Records.rows.length} T01 records to update`);
+
+      // Get all T02 records with their row numbers
+      const t02Records = await client.query(`
+        SELECT cty, fgsku_code, month, 
+               ROW_NUMBER() OVER (ORDER BY id) + 1 as excel_row_number
+        FROM t02_data 
+        WHERE upload_batch_id = $1
+        ORDER BY id
+      `, [uploadBatchId]);
+
+      console.log(`Found ${t02Records.rows.length} T02 records for mapping`);
+
+      // Create T02 mapping: key -> array of row numbers
+      const t02Mapping = new Map();
+      for (const t02Row of t02Records.rows) {
+        const key = `${t02Row.cty}_${t02Row.fgsku_code}_${t02Row.month}`;
+        if (!t02Mapping.has(key)) {
+          t02Mapping.set(key, []);
+        }
+        t02Mapping.get(key).push(t02Row.excel_row_number);
+      }
+
+      // Update each T01 record with correct Supply formula
+      let updatedCount = 0;
+      for (const t01Row of t01Records.rows) {
+        const lookupKey = `${t01Row.cty}_${t01Row.fgsku_code}_${t01Row.month}`;
+        const t02Rows = t02Mapping.get(lookupKey) || [];
+        
+        let supplyFormula;
+        if (t02Rows.length === 0) {
+          // No matching T02 rows
+          supplyFormula = '0';
+        } else if (t02Rows.length === 1) {
+          // Single T02 row
+          supplyFormula = `=T_02!X${t02Rows[0]}`;
+        } else {
+          // Multiple T02 rows - sum them
+          const cellReferences = t02Rows.map(rowNum => `T_02!X${rowNum}`);
+          supplyFormula = `=${cellReferences.join('+')}`;
+        }
+        
+        if (updatedCount < 5) {
+          console.log(`Supply formula for ${lookupKey}: ${supplyFormula}`);
+        }
+
+        // Update the T01 record with the formula
+        await client.query(`
+          UPDATE t01_data 
+          SET supply = $1 
+          WHERE id = $2
+        `, [supplyFormula, t01Row.id]);
+        
+        updatedCount++;
+      }
+
+      await client.query('COMMIT');
+      console.log(`✅ Updated ${updatedCount} T01 Supply formulas with T02 row references`);
+      
+      // Log some examples
+      const examples = await client.query(`
+        SELECT cty, fgsku_code, month, supply
+        FROM t01_data 
+        WHERE upload_batch_id = $1 
+        LIMIT 5
+      `, [uploadBatchId]);
+      
+      console.log('📋 Example Supply formulas:');
+      examples.rows.forEach((row, i) => {
+        console.log(`  ${i+1}. ${row.cty}|${row.fgsku_code}|${row.month} -> ${row.supply}`);
+      });
+
+      return {
+        success: true,
+        recordsUpdated: updatedCount,
+        message: 'Supply formulas updated successfully with T02 row references'
+      };
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('❌ Error updating Supply formulas:', error);
       throw error;
     } finally {
       client.release();

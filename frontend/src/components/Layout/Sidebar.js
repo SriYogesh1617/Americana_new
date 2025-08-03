@@ -11,7 +11,8 @@ import {
   Calendar,
   Download,
   Search,
-  Grid
+  Grid,
+  Package
 } from 'lucide-react';
 
 const SidebarContainer = styled.aside`
@@ -208,6 +209,14 @@ const Sidebar = () => {
           >
             <BarChart3 size={18} />
             <NavText>T04 WHBal</NavText>
+          </NavItem>
+          
+          <NavItem 
+            to="/item-master" 
+            $isActive={isActive('/item-master')}
+          >
+            <Package size={18} />
+            <NavText>Item Master</NavText>
           </NavItem>
         </NavSection>
         

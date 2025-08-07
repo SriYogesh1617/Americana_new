@@ -273,7 +273,7 @@ class T01Data {
       const demandRows = new Map();
       const geographyColumnIndex = 0;
       const marketColumnIndex = 1;
-      const fgskuCodeColumnIndex = 6;
+      const fgskuCodeColumnIndex = 5; // Unified code column (Column 6 in Excel, index 5)
       const pdNpdColumnIndex = 3;
       const originColumnIndex = 4;
 
@@ -410,9 +410,10 @@ class T01Data {
              // Aggregate demand data for each month (sum all rows for the same combination)
              for (const monthCol of monthColumns) {
                const monthKey = `${key}_${monthCol.monthNumber.toString().padStart(2, '0')}`;
-               const demandValue = parseFloat(rowData[monthCol.columnIndex]) || 0;
+               const rawDemandValue = parseFloat(rowData[monthCol.columnIndex]) || 0;
+               const demandValue = rawDemandValue <= 0 ? 0 : rawDemandValue; // Convert negative values to 0
                
-               console.log(`  📊 ${cty}_${fgskuCode} Month ${monthCol.monthNumber}: Column ${monthCol.columnIndex} = ${rowData[monthCol.columnIndex]} -> ${demandValue}`);
+               console.log(`  📊 ${cty}_${fgskuCode} Month ${monthCol.monthNumber}: Column ${monthCol.columnIndex} = ${rowData[monthCol.columnIndex]} -> ${rawDemandValue} -> ${demandValue}`);
                
                if (!demandDataByCombination.has(monthKey)) {
                  demandDataByCombination.set(monthKey, 0);
@@ -431,6 +432,11 @@ class T01Data {
        for (const [key, combination] of uniqueCombinations) {
          const { cty, fgskuCode, rowData, rowIndex } = combination;
          
+         // Skip SKUs with less than 10 digits
+         if (!fgskuCode || fgskuCode.toString().length < 10) {
+           continue;
+         }
+         
          // Determine market value
          let marketValue = "Others";
          if (cty === "KSA" || cty === "Kuwait" || cty === "UAE-FS" || cty === "UAE FS") {
@@ -440,7 +446,7 @@ class T01Data {
          // Determine production environment
          let productionEnvironmentValue = "MTO";
          if (marketValue === "KSA" || marketValue === "Kuwait" || marketValue === "UAE-FS") {
-           productionEnvironmentValue = productionEnvironmentLookup.get(fgskuCode) || "MTS";
+           productionEnvironmentValue = productionEnvironmentLookup.get(fgskuCode) || "N/A";
          }
          
          // Generate records for all detected months
@@ -468,6 +474,9 @@ class T01Data {
           if (productionEnvironmentValue === 'MTS') {
             const capacityLookupKey = `${fgskuCode}_${productionEnvironmentValue}`;
             inventoryDaysNorm = capacityLookup.get(capacityLookupKey) || 0.00;
+          } else if (productionEnvironmentValue === 'N/A') {
+            // For N/A production environment, set inventory days to 0
+            inventoryDaysNorm = 0.00;
           }
            
            // Calculate supply (T02 formula) - Sum of T02 Qty_Total for matching CTY, FGSKUCode, Month
@@ -561,13 +570,31 @@ class T01Data {
 
       console.log(`Found ${t01Records.rows.length} T01 records to update`);
 
-      // Get all T02 records with their row numbers
+      // Get all T02 records with their row numbers using the same ordering as T02Data
       const t02Records = await client.query(`
         SELECT cty, fgsku_code, month, 
-               ROW_NUMBER() OVER (ORDER BY id) + 1 as excel_row_number
+               ROW_NUMBER() OVER (
+                 ORDER BY 
+                   CASE wh 
+                     WHEN 'GFCM' THEN 1 
+                     WHEN 'KFCM' THEN 2 
+                     WHEN 'NFCM' THEN 3 
+                     WHEN 'X' THEN 4 
+                     ELSE 5 
+                   END,
+                   cty, fgsku_code, month
+               ) + 1 as excel_row_number
         FROM t02_data 
         WHERE upload_batch_id = $1
-        ORDER BY id
+        ORDER BY 
+          CASE wh 
+            WHEN 'GFCM' THEN 1 
+            WHEN 'KFCM' THEN 2 
+            WHEN 'NFCM' THEN 3 
+            WHEN 'X' THEN 4 
+            ELSE 5 
+          END,
+          cty, fgsku_code, month
       `, [uploadBatchId]);
 
       console.log(`Found ${t02Records.rows.length} T02 records for mapping`);
@@ -719,13 +746,31 @@ class T01Data {
 
       console.log(`Found ${t01Records.rows.length} T01 records to update`);
 
-      // Get all T02 records with their row numbers
+      // Get all T02 records with their row numbers using the same ordering as T02Data
       const t02Records = await client.query(`
         SELECT cty, fgsku_code, month, 
-               ROW_NUMBER() OVER (ORDER BY id) + 1 as excel_row_number
+               ROW_NUMBER() OVER (
+                 ORDER BY 
+                   CASE wh 
+                     WHEN 'GFCM' THEN 1 
+                     WHEN 'KFCM' THEN 2 
+                     WHEN 'NFCM' THEN 3 
+                     WHEN 'X' THEN 4 
+                     ELSE 5 
+                   END,
+                   cty, fgsku_code, month
+               ) + 1 as excel_row_number
         FROM t02_data 
         WHERE upload_batch_id = $1
-        ORDER BY id
+        ORDER BY 
+          CASE wh 
+            WHEN 'GFCM' THEN 1 
+            WHEN 'KFCM' THEN 2 
+            WHEN 'NFCM' THEN 3 
+            WHEN 'X' THEN 4 
+            ELSE 5 
+          END,
+          cty, fgsku_code, month
       `, [uploadBatchId]);
 
       console.log(`Found ${t02Records.rows.length} T02 records for mapping`);

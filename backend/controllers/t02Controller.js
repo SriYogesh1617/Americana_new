@@ -1,5 +1,7 @@
 const T02Data = require('../models/T02Data');
 const T01Data = require('../models/T01Data');
+const T03Data = require('../models/T03Data');
+const { query } = require('../config/database');
 const XLSX = require('xlsx');
 
 // Calculate T02 data from T01 data
@@ -389,7 +391,7 @@ const exportT02ToExcel = async (req, res) => {
   }
 };
 
-// Export combined T01 and T02 data to single XLSM file
+// Export combined T01, T02, and T03 data to single XLSM file
 const exportCombinedToExcel = async (req, res) => {
   try {
     const { uploadBatchId, upload_batch_id } = req.query;
@@ -401,14 +403,21 @@ const exportCombinedToExcel = async (req, res) => {
       return res.status(400).json({ error: 'uploadBatchId is required' });
     }
 
-    // Get both T01 and T02 data
-    const [t01Data, t02Data] = await Promise.all([
+    // Get T01, T02, and T03 data
+    const [t01Data, t02Data, t03DataResult] = await Promise.all([
       T01Data.findByUploadBatch(batchId),
-      T02Data.findByUploadBatch(batchId)
+      T02Data.findByUploadBatch(batchId),
+      query(`
+        SELECT * FROM t03_primdist 
+        WHERE upload_batch_id = $1 
+        ORDER BY id ASC
+      `, [batchId])
     ]);
     
-    if (t01Data.length === 0 && t02Data.length === 0) {
-      return res.status(404).json({ error: 'No T01 or T02 data found for the specified upload batch' });
+    const t03Data = t03DataResult.rows;
+    
+    if (t01Data.length === 0 && t02Data.length === 0 && t03Data.length === 0) {
+      return res.status(404).json({ error: 'No T01, T02, or T03 data found for the specified upload batch' });
     }
 
     // Create workbook
@@ -510,46 +519,50 @@ const exportCombinedToExcel = async (req, res) => {
     if (t02Data.length > 0) {
       console.log(`📊 Adding T02 data: ${t02Data.length} records`);
       
-      // Prepare T02 data for Excel export (using the same format as the standalone export)
-      const t02ExcelData = t02Data.map(item => ({
-        'CTY': item.cty,
-        'WH': item.wh,
-        'Default WH Restrictions': item.default_wh_restrictions,
-        'SKU specific Restrictions': item.sku_specific_restrictions,
-        'FGSKUCode': item.fgsku_code,
-        'TrimSKU': item.trim_sku,
-        'RMSKU': item.rm_sku,
-        'MthNum': item.month,
-        'Market': item.market,
-        'Customs?': item.customs,
-        'TransportCostPerCase': item.transport_cost_per_case,
-        'Max_GFC': item.max_gfc,
-        'Max_KFC': item.max_kfc,
-        'Max_NFC': item.max_nfc,
-        'FGWtPerUnit': item.fgwt_per_unit,
-        'Custom Cost/Unit - GFC': item.custom_cost_per_unit_gfc,
-        'Custom Cost/Unit - KFC': item.custom_cost_per_unit_kfc,
-        'Custom Cost/Unit - NFC': item.custom_cost_per_unit_nfc,
-        'Max_Arbit': item.max_arbit,
-        'Qty_GFC': item.qty_gfc,
-        'Qty_KFC': item.qty_kfc,
-        'Qty_NFC': item.qty_nfc,
-        'Qty_X': item.qty_x,
-        'Qty_Total': item.qty_total,
-        'Wt_GFC': item.wt_gfc,
-        'Wt_KFC': item.wt_kfc,
-        'Wt_NFC': item.wt_nfc,
-        'Custom Duty': item.custom_duty,
-        'Max_GFC_2': item.max_gfc_2,
-        'Max_KFC_2': item.max_kfc_2,
-        'Max_NFC_2': item.max_nfc_2,
-        'Pos_GFC': item.pos_gfc,
-        'Pos_KFC': item.pos_kfc,
-        'Pos_NFC': item.pos_nfc,
-        'Pos_X': item.pos_x,
-        'Max_X': item.max_x,
-        'RowCost': item.row_cost
-      }));
+      // Prepare T02 data for Excel export with formulas
+      const t02ExcelData = t02Data.map((item, index) => {
+        const rowIndex = index + 2; // Excel row (1-based, +1 for header)
+        
+        return {
+          'CTY': item.cty,
+          'WH': item.wh,
+          'Default WH Restrictions': item.default_wh_restrictions,
+          'SKU specific Restrictions': item.sku_specific_restrictions,
+          'FGSKUCode': item.fgsku_code,
+          'TrimSKU': item.trim_sku,
+          'RMSKU': item.rm_sku,
+          'MthNum': item.month,
+          'Market': item.market,
+          'Customs?': item.customs,
+          'TransportCostPerCase': item.transport_cost_per_case,
+          'Max_GFC': item.max_gfc,
+          'Max_KFC': item.max_kfc,
+          'Max_NFC': item.max_nfc,
+          'FGWtPerUnit': item.fgwt_per_unit,
+          'Custom Cost/Unit - GFC': item.custom_cost_per_unit_gfc,
+          'Custom Cost/Unit - KFC': item.custom_cost_per_unit_kfc,
+          'Custom Cost/Unit - NFC': item.custom_cost_per_unit_nfc,
+          'Max_Arbit': item.max_arbit,
+          'Qty_GFC': item.qty_gfc,
+          'Qty_KFC': item.qty_kfc,
+          'Qty_NFC': item.qty_nfc,
+          'Qty_X': item.qty_x,
+          'Qty_Total': `=SUM(U${rowIndex}:X${rowIndex})`, // Sum of all Qty columns
+          'Wt_GFC': `=U${rowIndex}*O${rowIndex}`, // Qty_GFC × FGWtPerUnit
+          'Wt_KFC': `=V${rowIndex}*O${rowIndex}`, // Qty_KFC × FGWtPerUnit
+          'Wt_NFC': `=W${rowIndex}*O${rowIndex}`, // Qty_NFC × FGWtPerUnit
+          'Custom Duty': `=Y${rowIndex}*R${rowIndex}`, // Qty_Total × Custom Cost/Unit - GFC
+          'Max_GFC_2': `=@WB(U${rowIndex},"<=",L${rowIndex})`, // Qty_GFC <= Max_GFC
+          'Max_KFC_2': `=@WB(V${rowIndex},"<=",M${rowIndex})`, // Qty_KFC <= Max_KFC
+          'Max_NFC_2': `=@WB(W${rowIndex},"<=",N${rowIndex})`, // Qty_NFC <= Max_NFC
+          'Pos_GFC': `=@WB(U${rowIndex},">=",0)`, // Qty_GFC >= 0
+          'Pos_KFC': `=@WB(V${rowIndex},">=",0)`, // Qty_KFC >= 0
+          'Pos_NFC': `=@WB(W${rowIndex},">=",0)`, // Qty_NFC >= 0
+          'Pos_X': `=@WB(X${rowIndex},">=",0)`, // Qty_X >= 0
+          'Max_X': `=@WB(X${rowIndex},"<=",T${rowIndex})`, // Qty_X <= Max_Arbit
+          'RowCost': `=Y${rowIndex}*K${rowIndex}` // Qty_Total × TransportCostPerCase
+        };
+      });
 
       // Create T02 worksheet
       const t02Worksheet = XLSX.utils.json_to_sheet(t02ExcelData);
@@ -558,46 +571,46 @@ const exportCombinedToExcel = async (req, res) => {
       const t02Range = XLSX.utils.decode_range(t02Worksheet['!ref']);
       const t02Headers = Object.keys(t02ExcelData[0]);
       
-      // T02 column formatting
-      const t02ColumnFormats = {
-        'CTY': { t: 's' },
-        'WH': { t: 's' },
-        'Default WH Restrictions': { t: 's' },
-        'SKU specific Restrictions': { t: 's' },
-        'FGSKUCode': { t: 'n', z: '0' }, // Number format for SKU (preserves display)
-        'TrimSKU': { t: 's', z: '@' },
-        'RMSKU': { t: 's', z: '@' },
-        'MthNum': { t: 'n', z: '0' },
-        'Market': { t: 's' },
-        'Customs?': { t: 's' },
-        'TransportCostPerCase': { t: 'n', z: '0.0000' },
-        'Max_GFC': { t: 'n', z: '0' },
-        'Max_KFC': { t: 'n', z: '0' },
-        'Max_NFC': { t: 'n', z: '0' },
-        'FGWtPerUnit': { t: 'n', z: '0.0000' },
-        'Custom Cost/Unit - GFC': { t: 'n', z: '0.0000' },
-        'Custom Cost/Unit - KFC': { t: 'n', z: '0.0000' },
-        'Custom Cost/Unit - NFC': { t: 'n', z: '0.0000' },
-        'Max_Arbit': { t: 'n', z: '0' },
-        'Qty_GFC': { t: 'n', z: '0' },
-        'Qty_KFC': { t: 'n', z: '0' },
-        'Qty_NFC': { t: 'n', z: '0' },
-        'Qty_X': { t: 'n', z: '0' },
-        'Qty_Total': { t: 's' },
-        'Wt_GFC': { t: 's' },
-        'Wt_KFC': { t: 's' },
-        'Wt_NFC': { t: 's' },
-        'Custom Duty': { t: 's' },
-        'Max_GFC_2': { t: 's' },
-        'Max_KFC_2': { t: 's' },
-        'Max_NFC_2': { t: 's' },
-        'Pos_GFC': { t: 's' },
-        'Pos_KFC': { t: 's' },
-        'Pos_NFC': { t: 's' },
-        'Pos_X': { t: 's' },
-        'Max_X': { t: 's' },
-        'RowCost': { t: 's' }
-      };
+             // T02 column formatting
+       const t02ColumnFormats = {
+         'CTY': { t: 's' },
+         'WH': { t: 's' },
+         'Default WH Restrictions': { t: 's' },
+         'SKU specific Restrictions': { t: 's' },
+         'FGSKUCode': { t: 'n', z: '0' }, // Number format for SKU (preserves display)
+         'TrimSKU': { t: 's', z: '@' },
+         'RMSKU': { t: 's', z: '@' },
+         'MthNum': { t: 'n', z: '0' },
+         'Market': { t: 's' },
+         'Customs?': { t: 's' },
+         'TransportCostPerCase': { t: 'n', z: '0.0000' },
+         'Max_GFC': { t: 'n', z: '0' },
+         'Max_KFC': { t: 'n', z: '0' },
+         'Max_NFC': { t: 'n', z: '0' },
+         'FGWtPerUnit': { t: 'n', z: '0.0000' },
+         'Custom Cost/Unit - GFC': { t: 'n', z: '0.0000' },
+         'Custom Cost/Unit - KFC': { t: 'n', z: '0.0000' },
+         'Custom Cost/Unit - NFC': { t: 'n', z: '0.0000' },
+         'Max_Arbit': { t: 'n', z: '0' },
+         'Qty_GFC': { t: 'n', z: '0' },
+         'Qty_KFC': { t: 'n', z: '0' },
+         'Qty_NFC': { t: 'n', z: '0' },
+         'Qty_X': { t: 'n', z: '0' },
+         'Qty_Total': { t: 's' }, // Formula
+         'Wt_GFC': { t: 's' }, // Formula
+         'Wt_KFC': { t: 's' }, // Formula
+         'Wt_NFC': { t: 's' }, // Formula
+         'Custom Duty': { t: 's' }, // Formula
+         'Max_GFC_2': { t: 's' }, // Formula
+         'Max_KFC_2': { t: 's' }, // Formula
+         'Max_NFC_2': { t: 's' }, // Formula
+         'Pos_GFC': { t: 's' }, // Formula
+         'Pos_KFC': { t: 's' }, // Formula
+         'Pos_NFC': { t: 's' }, // Formula
+         'Pos_X': { t: 's' }, // Formula
+         'Max_X': { t: 's' }, // Formula
+         'RowCost': { t: 's' } // Formula
+       };
       
       // Apply T02 formatting
       for (let col = 0; col <= t02Range.e.c; col++) {
@@ -652,15 +665,114 @@ const exportCombinedToExcel = async (req, res) => {
       XLSX.utils.book_append_sheet(workbook, t02Worksheet, 'T_02');
     }
 
+    // === T03 SHEET ===
+    if (t03Data.length > 0) {
+      console.log(`📊 Adding T03 data: ${t03Data.length} records`);
+      
+             // Prepare T03 data for Excel export with formulas
+       const t03ExcelData = t03Data.map((item, index) => {
+         const rowIndex = index + 2; // Excel row (1-based, +1 for header)
+         
+         return {
+           'WH': item.wh,
+           'PLT': item.plt,
+           'FGSKU Code': item.fgsku_code,
+           'Month': item.mth_num,
+           'Cost Per Unit': item.cost_per_unit,
+           'Custom Cost/Unit': item.custom_cost_per_unit,
+           'Max Qty': item.max_qty,
+           'FG Wt Per Unit': item.fg_wt_per_unit,
+           'Qty': item.qty,
+           'Wt': `=I${rowIndex}*H${rowIndex}`, // Qty × FGWtPerUnit
+           'Custom Duty': `=I${rowIndex}*F${rowIndex}`, // Qty × Custom Cost/Unit
+           'Pos Check': `=@WB(I${rowIndex},">=",0)`, // Qty >= 0
+           'Qty≤Max': `=@WB(I${rowIndex},"<=",G${rowIndex})`, // Qty <= MaxQty
+           'Row Cost': `=I${rowIndex}*E${rowIndex}` // Qty × CostPerUnit
+         };
+       });
+
+      // Create T03 worksheet
+      const t03Worksheet = XLSX.utils.json_to_sheet(t03ExcelData);
+      
+      // Apply T03 formatting (reuse the same logic as standalone export)
+      const t03Range = XLSX.utils.decode_range(t03Worksheet['!ref']);
+      const t03Headers = Object.keys(t03ExcelData[0]);
+      
+             // T03 column formatting
+       const t03ColumnFormats = {
+         'WH': { t: 's' },
+         'PLT': { t: 's' },
+         'FGSKU Code': { t: 'n', z: '0' }, // Number format for SKU (preserves display)
+         'Month': { t: 'n', z: '0' },
+         'Cost Per Unit': { t: 'n', z: '0.0000' },
+         'Custom Cost/Unit': { t: 'n', z: '0.0000' },
+         'Max Qty': { t: 'n', z: '0' },
+         'FG Wt Per Unit': { t: 'n', z: '0.0000' },
+         'Qty': { t: 'n', z: '0' },
+         'Wt': { t: 's' }, // Formula
+         'Custom Duty': { t: 's' }, // Formula
+         'Pos Check': { t: 's' }, // Formula
+         'Qty≤Max': { t: 's' }, // Formula
+         'Row Cost': { t: 's' } // Formula
+       };
+      
+      // Apply T03 formatting
+      for (let col = 0; col <= t03Range.e.c; col++) {
+        const headerCell = XLSX.utils.encode_cell({ r: 0, c: col });
+        const headerValue = t03Worksheet[headerCell]?.v;
+        
+        if (headerValue && t03ColumnFormats[headerValue]) {
+          const format = t03ColumnFormats[headerValue];
+          
+          for (let row = 1; row <= t03Range.e.r; row++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+            if (t03Worksheet[cellAddress]) {
+              t03Worksheet[cellAddress].t = format.t;
+              if (format.z) {
+                t03Worksheet[cellAddress].z = format.z;
+              }
+              
+              if (format.z === '@') {
+                t03Worksheet[cellAddress].t = 's';
+                if (t03Worksheet[cellAddress].v !== undefined) {
+                  t03Worksheet[cellAddress].v = String(t03Worksheet[cellAddress].v);
+                }
+              }
+            }
+          }
+        }
+      }
+      
+             // Set T03 column widths
+       const t03ColumnWidths = t03Headers.map(header => {
+         switch(header) {
+           case 'FGSKU Code':
+             return { wch: 15 };
+           case 'Custom Cost/Unit':
+             return { wch: 18 };
+           case 'FG Wt Per Unit':
+             return { wch: 16 };
+           case 'Pos Check':
+           case 'Qty≤Max':
+             return { wch: 10 };
+           default:
+             return { wch: 12 };
+         }
+       });
+      
+      t03Worksheet['!cols'] = t03ColumnWidths;
+      XLSX.utils.book_append_sheet(workbook, t03Worksheet, 'T_03');
+    }
+
     // Generate XLSM buffer (macro-enabled format)
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsm' });
 
     // Set response headers for XLSM
     res.setHeader('Content-Type', 'application/vnd.ms-excel.sheet.macroEnabled.12');
-    res.setHeader('Content-Disposition', `attachment; filename=T01_T02_Combined_${batchId}_${Date.now()}.xlsm`);
+    res.setHeader('Content-Disposition', `attachment; filename=T01_T02_T03_Combined_${batchId}_${Date.now()}.xlsm`);
     res.setHeader('Content-Length', buffer.length);
 
-    console.log(`✅ Generated combined T01/T02 XLSM file successfully`);
+    console.log(`✅ Generated combined T01/T02/T03 XLSM file successfully`);
 
     // Send the file
     res.send(buffer);

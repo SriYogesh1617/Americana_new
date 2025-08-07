@@ -173,8 +173,8 @@ class CustomCostLookup {
         return 0;
       }
 
-      // Rule: Custom duty only applies to inbound shipments to KSA
-      if (country !== 'KSA' && country !== 'KSA FS') {
+      // Rule: Custom duty only applies to inbound shipments to KSA (NFCM warehouse)
+      if (country !== 'KSA') {
         return 0;
       }
 
@@ -186,10 +186,10 @@ class CustomCostLookup {
         this.getCustomDutyPercentage()
       ]);
 
-      // Use default values if not found
-      const rmPrice = averageRMPrice || 0;
-      const overhead = factoryOverhead || 0;
-      const freight = freightCost || 0;
+      // Use default values if not found and ensure they are numbers
+      const rmPrice = parseFloat(averageRMPrice) || 0;
+      const overhead = parseFloat(factoryOverhead) || 0;
+      const freight = parseFloat(freightCost) || 0;
 
       // Apply the formula: [RM Price + Freight Cost + Factory Overheads] × (1 + Markup%) × Custom Duty %
       const baseAmount = rmPrice + freight + overhead;

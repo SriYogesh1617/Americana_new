@@ -268,6 +268,12 @@ class T02Data {
         // For each WH, process all CTY + FGSKU combinations
         for (const combination of uniqueCombinations) {
           const [cty, fgskuCode] = combination.split('_');
+          
+          // Skip SKUs with less than 10 digits
+          if (!fgskuCode || fgskuCode.toString().length < 10) {
+            continue;
+          }
+          
           console.log(`Processing combination: CTY=${cty}, FGSKU=${fgskuCode} for WH=${wh}`);
           
           // Create records for each month (5 to 16) for this WH

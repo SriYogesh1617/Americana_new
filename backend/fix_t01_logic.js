@@ -39,11 +39,11 @@ async function testT01Logic() {
 
     // Process demand data
     const demandRows = new Map();
-    const geographyColumnIndex = 0;
-    const marketColumnIndex = 1;
-    const fgskuCodeColumnIndex = 6;
-    const pdNpdColumnIndex = 3;
-    const originColumnIndex = 4;
+      const geographyColumnIndex = 0;
+  const marketColumnIndex = 1;
+  const fgskuCodeColumnIndex = 5; // Unified code column (Column 6 in Excel, index 5)
+  const pdNpdColumnIndex = 3;
+  const originColumnIndex = 4;
 
     // Group demand data by row
     for (const cell of demandData.rows) {

@@ -261,9 +261,9 @@ export const downloadT03Data = async (id) => {
   }
 };
 
-export const processT03Data = async (sourceWorkbooks) => {
+export const processT03Data = async (uploadBatchId) => {
   try {
-    return await t03API.processT03Data(sourceWorkbooks);
+    return await api.post('/t03/process', { uploadBatchId });
   } catch (error) {
     console.error('Error processing T03 data:', error);
     throw error;

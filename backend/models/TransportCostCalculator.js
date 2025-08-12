@@ -171,17 +171,19 @@ class TransportCostCalculator {
     }
     
     // Rule: Transport cost should be 0 for shipping within the same country
-    // NFCM -> KSA/KSA FS, GFCM -> UAE/UAE FS, KFCM -> Kuwait/Kuwait FS
-    if ((wh === 'NFCM' && (cty === 'KSA' || cty === 'KSA FS')) ||
-        (wh === 'GFCM' && (cty === 'UAE' || cty === 'UAE FS')) ||
-        (wh === 'KFCM' && (cty === 'Kuwait' || cty === 'Kuwait FS'))) {
-      return 0;
-    }
+    // This rule is handled in the T03 generation logic, not here
+    // The TransportCostCalculator should only handle the fallback logic
     
     const { specificCosts, fallbackStructure } = freightData;
     
+    // Map T03 country codes to freight data country codes
+    let mappedCty = cty;
+    if (cty === 'UAE FS') mappedCty = 'UAE';
+    if (cty === 'KSA') mappedCty = 'KSA';
+    if (cty === 'Kuwait') mappedCty = 'Kuwait';
+    
     // Rule 1 & 2: Look for specific CTY + WH + FGSKUCode combination
-    const specificKey = `${cty}_${wh}_${fgskuCode}`;
+    const specificKey = `${mappedCty}_${wh}_${fgskuCode}`;
     let transportCost = specificCosts.get(specificKey);
     
     if (transportCost !== undefined) {
@@ -192,7 +194,7 @@ class TransportCostCalculator {
     
     // Fallback 1: Average transport cost for origin-destination combination
     const origin = wh.replace('M', ''); // GFCM -> GFC, KFCM -> KFC, NFCM -> NFC
-    const odKey = `${origin}_${cty}`;
+    const odKey = `${origin}_${mappedCty}`;
     transportCost = fallbackStructure.originDestinationAvg.get(odKey);
     
     if (transportCost !== undefined) {
@@ -200,7 +202,7 @@ class TransportCostCalculator {
     }
     
     // Fallback 2: Average cost for the given destination
-    transportCost = fallbackStructure.destinationAvg.get(cty);
+    transportCost = fallbackStructure.destinationAvg.get(mappedCty);
     
     if (transportCost !== undefined) {
       return transportCost;

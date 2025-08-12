@@ -504,7 +504,7 @@ const T02Data = () => {
             onClick={handleExportCombined}
             disabled={!selectedUploadBatch || exportCombinedMutation.isLoading}
           >
-            {exportCombinedMutation.isLoading ? 'Exporting...' : 'Export T01+T02 XLSM'}
+            {exportCombinedMutation.isLoading ? 'Exporting...' : 'Export T01+T02+T03 XLSM'}
           </Button>
           <Button
             className="danger"

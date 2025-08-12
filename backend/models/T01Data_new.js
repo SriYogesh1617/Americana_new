@@ -207,7 +207,7 @@ class T01Data {
       const demandRows = new Map();
       const geographyColumnIndex = 0;
       const marketColumnIndex = 1;
-      const fgskuCodeColumnIndex = 6;
+      const fgskuCodeColumnIndex = 5; // Unified code column (Column 6 in Excel, index 5)
       const pdNpdColumnIndex = 3;
       const originColumnIndex = 4;
 
@@ -314,7 +314,7 @@ class T01Data {
           if (lookupProductionEnvironment) {
             productionEnvironmentValue = lookupProductionEnvironment;
           } else {
-            productionEnvironmentValue = "MTS";
+            productionEnvironmentValue = "N/A";
           }
         }
         
@@ -341,27 +341,28 @@ class T01Data {
           if (productionEnvironmentValue === "MTS") {
             const capacityLookupKey = `${fgskuCode}_${productionEnvironmentValue}`;
             inventoryDaysNormValue = capacityLookup.get(capacityLookupKey) || 0;
+          } else if (productionEnvironmentValue === "N/A") {
+            // For N/A production environment, set inventory days to 0
+            inventoryDaysNormValue = 0;
           }
           
-          // Create T02 formula
-          const t02CountBefore = await client.query(`
-            SELECT COUNT(*) as count
+          // Create T02 formula - Get actual T02 row numbers for this CTY/SKU/Month combination
+          const t02Rows = await client.query(`
+            SELECT ROW_NUMBER() OVER (ORDER BY id) + 1 as excel_row_number
             FROM t02_data 
             WHERE upload_batch_id = $1 
-            AND (
-              (cty < $2) OR 
-              (cty = $2 AND fgsku_code < $3) OR 
-              (cty = $2 AND fgsku_code = $3 AND month < $4)
-            )
+              AND cty = $2 
+              AND fgsku_code = $3 
+              AND month = $4
+            ORDER BY id
+            LIMIT 4
           `, [batchId, cty, fgskuCode, month]);
           
-          const startingRow = parseInt(t02CountBefore.rows[0].count) + 2;
-          const t02RowNumbers = [];
-          for (let i = 0; i < 4; i++) {
-            t02RowNumbers.push(`T_02!V${startingRow + i}`);
+          let supplyValue = '0';
+          if (t02Rows.rows.length > 0) {
+            const t02RowNumbers = t02Rows.rows.map(row => `T_02!X${row.excel_row_number}`);
+            supplyValue = t02RowNumbers.join('+');
           }
-          
-          let supplyValue = t02RowNumbers.join('+');
           
           // Cons formula - calculate correct Excel row number
           recordCounter++;

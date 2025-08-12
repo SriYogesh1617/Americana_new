@@ -204,6 +204,13 @@ const Sidebar = () => {
             <NavText>T03 Data</NavText>
           </NavItem>
           <NavItem 
+            to="/t03-test-data" 
+            $isActive={isActive('/t03-test-data')}
+          >
+            <Database size={18} />
+            <NavText>T03 Test (SQL)</NavText>
+          </NavItem>
+          <NavItem 
             to="/t04-data" 
             $isActive={isActive('/t04-data')}
           >

@@ -16,6 +16,7 @@ import CursorData from './pages/CursorData';
 import T01Data from './pages/T01Data';
 import T02Data from './pages/T02Data';
 import T03Data from './pages/T03Data';
+import T03TestData from './pages/T03TestData';
 import T04Data from './pages/T04Data';
 import ItemMaster from './pages/ItemMaster';
 
@@ -58,6 +59,7 @@ function App() {
             <Route path="/t01-data" element={<T01Data />} />
             <Route path="/t02-data" element={<T02Data />} />
             <Route path="/t03-data" element={<T03Data />} />
+            <Route path="/t03-test-data" element={<T03TestData />} />
             <Route path="/t04-data" element={<T04Data />} />
             <Route path="/item-master" element={<ItemMaster />} />
           </Routes>

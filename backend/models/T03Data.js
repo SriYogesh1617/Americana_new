@@ -580,6 +580,515 @@ class T03Data {
     }
   }
 
+  // Remove duplicate T03 records and add unique constraint
+  static async removeDuplicatesAndAddConstraint(uploadBatchId = null) {
+    try {
+      console.log('🧹 Removing duplicate T03 records...');
+      
+      let whereClause = '';
+      const params = [];
+      if (uploadBatchId) {
+        whereClause = 'AND upload_batch_id = $1';
+        params.push(uploadBatchId);
+      }
+      
+      // Find duplicates first
+      const duplicateCheckQuery = `
+        SELECT wh, plt, fgsku_code, mth_num, COUNT(*) as count
+        FROM t03_primdist
+        WHERE 1=1 ${whereClause}
+        GROUP BY wh, plt, fgsku_code, mth_num
+        HAVING COUNT(*) > 1
+        ORDER BY count DESC
+      `;
+      
+      const duplicateResult = await query(duplicateCheckQuery, params);
+      if (duplicateResult.rows.length > 0) {
+        console.log(`⚠️  Found ${duplicateResult.rows.length} T03 duplicate combinations:`);
+        duplicateResult.rows.slice(0, 5).forEach((row, index) => {
+          console.log(`  ${index + 1}. WH: ${row.wh}, PLT: ${row.plt}, FG: ${row.fgsku_code}, Month: ${row.mth_num} (${row.count} duplicates)`);
+        });
+        
+        // Remove duplicates, keeping the latest record
+        const removeDuplicatesQuery = `
+          DELETE FROM t03_primdist t1
+          WHERE t1.id NOT IN (
+            SELECT MAX(t2.id) 
+            FROM t03_primdist t2 
+            WHERE t2.wh = t1.wh 
+              AND t2.plt = t1.plt 
+              AND t2.fgsku_code = t1.fgsku_code 
+              AND t2.mth_num = t1.mth_num
+              ${uploadBatchId ? 'AND t2.upload_batch_id = t1.upload_batch_id' : ''}
+          ) ${whereClause}
+        `;
+        
+        const removeResult = await query(removeDuplicatesQuery, params);
+        console.log(`✅ Removed ${removeResult.rowCount} duplicate T03 records`);
+      } else {
+        console.log('✅ No T03 duplicates found');
+      }
+      
+      // Try to add unique constraint (will fail silently if already exists)
+      try {
+        const addConstraintQuery = `
+          ALTER TABLE t03_primdist 
+          ADD CONSTRAINT uk_t03_unique_combination 
+          UNIQUE (wh, plt, fgsku_code, mth_num, upload_batch_id)
+        `;
+        
+        await query(addConstraintQuery);
+        console.log('✅ Added unique constraint to prevent future T03 duplicates');
+      } catch (constraintError) {
+        // Constraint might already exist, that's okay
+        if (constraintError.message.includes('already exists')) {
+          console.log('✅ Unique constraint already exists');
+        } else {
+          console.log('⚠️  Could not add unique constraint:', constraintError.message);
+        }
+      }
+      
+      return duplicateResult.rows.length;
+    } catch (error) {
+      console.error('❌ Error removing duplicates:', error);
+      throw error;
+    }
+  }
+
+  // Update CTY values to match freight data destination column
+  static async updateCtyMapping(uploadBatchId = null) {
+    try {
+      console.log('🗺️ Updating CTY mapping to match freight data...');
+      
+      let whereClause = '';
+      const params = [];
+      if (uploadBatchId) {
+        whereClause = 'AND upload_batch_id = $1';
+        params.push(uploadBatchId);
+      }
+      
+      const updateQuery = `
+        UPDATE t03_primdist 
+        SET cty = CASE 
+          WHEN wh = 'NFCM' THEN 'Saudi Arabia'
+          WHEN wh = 'GFCM' THEN 'United Arab Emirates' 
+          WHEN wh = 'KFCM' THEN 'Kuwait'
+          ELSE cty
+        END,
+        updated_at = CURRENT_TIMESTAMP
+        WHERE wh IN ('NFCM', 'GFCM', 'KFCM') ${whereClause}
+      `;
+      
+      const result = await query(updateQuery, params);
+      console.log(`✅ Updated CTY mapping for ${result.rowCount} T03 records`);
+      console.log('   - NFCM → Saudi Arabia');
+      console.log('   - GFCM → United Arab Emirates'); 
+      console.log('   - KFCM → Kuwait (unchanged)');
+      
+      return result.rowCount;
+    } catch (error) {
+      console.error('❌ Error updating CTY mapping:', error);
+      throw error;
+    }
+  }
+
+  // Update cost per unit using SQL script with freight data
+  static async updateCostPerUnitWithSQL(uploadBatchId = null) {
+    try {
+      console.log('🔄 Updating T03 cost per unit using SQL script...');
+      
+      let whereClause = '';
+      const params = [];
+      if (uploadBatchId) {
+        whereClause = 'AND t03.upload_batch_id = $1';
+        params.push(uploadBatchId);
+      }
+      
+      const updateQuery = `
+        UPDATE t03_primdist t03
+        SET cost_per_unit = subquery.calculated_cost,
+            updated_at = CURRENT_TIMESTAMP
+        FROM (
+          SELECT 
+            TRIM(f.origin::text) as origin,
+            TRIM(f.destination::text) as destination,
+            TRIM(f.fg_code::text) as fg_code,
+            CASE 
+              WHEN TRIM(f.truck_load_uom::text) ~ '^[0-9]+(\.[0-9]+)?$' 
+                AND TRIM(f.truck_freight_usd_truckload::text) ~ '^[0-9]+(\.[0-9]+)?$'
+                AND TRIM(f.truck_load_uom::text)::NUMERIC > 0
+              THEN TRIM(f.truck_freight_usd_truckload::text)::NUMERIC / TRIM(f.truck_load_uom::text)::NUMERIC
+              ELSE 0
+            END as calculated_cost
+          FROM freight_storage_costs_ii_template_freightrawdata f
+          WHERE f.truck_load_uom IS NOT NULL 
+            AND f.truck_freight_usd_truckload IS NOT NULL
+            AND LOWER(TRIM(f.truck_load_uom::text)) NOT IN ('missing', '')
+            AND LOWER(TRIM(f.truck_freight_usd_truckload::text)) NOT IN ('missing', '')
+        ) subquery
+        WHERE UPPER(TRIM(t03.plt)) = UPPER(subquery.origin)
+          AND UPPER(TRIM(t03.cty)) = UPPER(subquery.destination)
+          AND TRIM(t03.fgsku_code) = subquery.fg_code
+          ${whereClause}
+      `;
+      
+      // First, let's see what freight data we have available
+      const freightSampleQuery = `
+        SELECT 
+          TRIM(f.origin::text) as origin,
+          TRIM(f.destination::text) as destination,
+          TRIM(f.fg_code::text) as fg_code,
+          TRIM(f.truck_load_uom::text) as truck_load,
+          TRIM(f.truck_freight_usd_truckload::text) as truck_freight,
+          CASE 
+            WHEN TRIM(f.truck_load_uom::text) ~ '^[0-9]+(\.[0-9]+)?$' 
+              AND TRIM(f.truck_freight_usd_truckload::text) ~ '^[0-9]+(\.[0-9]+)?$'
+              AND TRIM(f.truck_load_uom::text)::NUMERIC > 0
+            THEN TRIM(f.truck_freight_usd_truckload::text)::NUMERIC / TRIM(f.truck_load_uom::text)::NUMERIC
+            ELSE 0
+          END as calculated_cost
+        FROM freight_storage_costs_ii_template_freightrawdata f
+        WHERE f.truck_load_uom IS NOT NULL 
+          AND f.truck_freight_usd_truckload IS NOT NULL
+          AND LOWER(TRIM(f.truck_load_uom::text)) NOT IN ('missing', '')
+          AND LOWER(TRIM(f.truck_freight_usd_truckload::text)) NOT IN ('missing', '')
+        LIMIT 10
+      `;
+      
+      const freightSample = await query(freightSampleQuery);
+      console.log('\n🔍 Sample freight data available:');
+      freightSample.rows.forEach((row, index) => {
+        console.log(`  ${index + 1}. Origin: ${row.origin}, Destination: ${row.destination}, FG: ${row.fg_code}`);
+        console.log(`     Load: ${row.truck_load}, Freight: ${row.truck_freight}, Cost: ${row.calculated_cost}`);
+      });
+
+      // Let's see what T03 data we're trying to match, grouped by warehouse
+      const t03SampleQuery = `
+        SELECT wh, plt, cty, fgsku_code, cost_per_unit
+        FROM t03_primdist
+        ${uploadBatchId ? 'WHERE upload_batch_id = $1' : ''}
+        ORDER BY wh, id
+        LIMIT 15
+      `;
+      
+      const t03Sample = await query(t03SampleQuery, params);
+      console.log('\n🔍 Sample T03 data to match (by warehouse):');
+      t03Sample.rows.forEach((row, index) => {
+        console.log(`  ${index + 1}. WH: ${row.wh}, PLT: ${row.plt}, CTY: ${row.cty}, FG: ${row.fgsku_code}, Cost: ${row.cost_per_unit}`);
+      });
+
+      // Check if we have freight data for different origins
+      const originCheckQuery = `
+        SELECT DISTINCT TRIM(f.origin::text) as origin, COUNT(*) as record_count
+        FROM freight_storage_costs_ii_template_freightrawdata f
+        WHERE f.truck_load_uom IS NOT NULL 
+          AND f.truck_freight_usd_truckload IS NOT NULL
+          AND LOWER(TRIM(f.truck_load_uom::text)) NOT IN ('missing', '')
+          AND LOWER(TRIM(f.truck_freight_usd_truckload::text)) NOT IN ('missing', '')
+        GROUP BY TRIM(f.origin::text)
+        ORDER BY record_count DESC
+      `;
+      
+      const originCheck = await query(originCheckQuery);
+      console.log('\n🔍 Available origins in freight data:');
+      originCheck.rows.forEach((row, index) => {
+        console.log(`  ${index + 1}. Origin: "${row.origin}" (${row.record_count} records)`);
+      });
+
+      // Check available destinations
+      const destinationCheckQuery = `
+        SELECT DISTINCT TRIM(f.destination::text) as destination, COUNT(*) as record_count
+        FROM freight_storage_costs_ii_template_freightrawdata f
+        WHERE f.truck_load_uom IS NOT NULL 
+          AND f.truck_freight_usd_truckload IS NOT NULL
+          AND LOWER(TRIM(f.truck_load_uom::text)) NOT IN ('missing', '')
+          AND LOWER(TRIM(f.truck_freight_usd_truckload::text)) NOT IN ('missing', '')
+        GROUP BY TRIM(f.destination::text)
+        ORDER BY record_count DESC
+      `;
+      
+      const destinationCheck = await query(destinationCheckQuery);
+      console.log('\n🔍 Available destinations in freight data:');
+      destinationCheck.rows.forEach((row, index) => {
+        console.log(`  ${index + 1}. Destination: "${row.destination}" (${row.record_count} records)`);
+      });
+
+      // Debug: Check specific freight data for GFC and KFC origins
+      const debugFreightQuery = `
+        SELECT 
+          TRIM(f.origin::text) as origin,
+          TRIM(f.destination::text) as destination,
+          TRIM(f.fg_code::text) as fg_code,
+          TRIM(f.truck_load_uom::text) as truck_load,
+          TRIM(f.truck_freight_usd_truckload::text) as truck_freight,
+          CASE 
+            WHEN TRIM(f.truck_load_uom::text) ~ '^[0-9]+(\.[0-9]+)?$' 
+              AND TRIM(f.truck_freight_usd_truckload::text) ~ '^[0-9]+(\.[0-9]+)?$'
+              AND TRIM(f.truck_load_uom::text)::NUMERIC > 0
+            THEN TRIM(f.truck_freight_usd_truckload::text)::NUMERIC / TRIM(f.truck_load_uom::text)::NUMERIC
+            ELSE 0
+          END as calculated_cost
+        FROM freight_storage_costs_ii_template_freightrawdata f
+        WHERE TRIM(f.origin::text) IN ('GFC', 'KFC')
+          AND TRIM(f.destination::text) IN ('United Arab Emirates', 'Kuwait')
+          AND f.truck_load_uom IS NOT NULL 
+          AND f.truck_freight_usd_truckload IS NOT NULL
+          AND LOWER(TRIM(f.truck_load_uom::text)) NOT IN ('missing', '')
+          AND LOWER(TRIM(f.truck_freight_usd_truckload::text)) NOT IN ('missing', '')
+        ORDER BY origin, destination, calculated_cost DESC
+        LIMIT 10
+      `;
+      
+      const debugFreight = await query(debugFreightQuery);
+      console.log('\n🔍 Debug: GFC & KFC freight data for UAE & Kuwait:');
+      if (debugFreight.rows.length > 0) {
+        debugFreight.rows.forEach((row, index) => {
+          console.log(`  ${index + 1}. ${row.origin}->${row.destination}, FG: ${row.fg_code}`);
+          console.log(`     Load: ${row.truck_load}, Freight: ${row.truck_freight}, Cost: ${row.calculated_cost}`);
+        });
+      } else {
+        console.log('  ❌ No freight data found for GFC->UAE or KFC->Kuwait combinations!');
+      }
+
+      // Check for data quality issues
+      const dataQualityQuery = `
+        SELECT 
+          TRIM(f.origin::text) as origin,
+          COUNT(*) as total_records,
+          COUNT(CASE WHEN TRIM(f.truck_load_uom::text) ~ '^[0-9]+(\.[0-9]+)?$' THEN 1 END) as valid_load,
+          COUNT(CASE WHEN TRIM(f.truck_freight_usd_truckload::text) ~ '^[0-9]+(\.[0-9]+)?$' THEN 1 END) as valid_freight,
+          AVG(CASE 
+            WHEN TRIM(f.truck_load_uom::text) ~ '^[0-9]+(\.[0-9]+)?$' 
+              AND TRIM(f.truck_freight_usd_truckload::text) ~ '^[0-9]+(\.[0-9]+)?$'
+              AND TRIM(f.truck_load_uom::text)::NUMERIC > 0
+            THEN TRIM(f.truck_freight_usd_truckload::text)::NUMERIC / TRIM(f.truck_load_uom::text)::NUMERIC
+            ELSE NULL
+          END) as avg_cost
+        FROM freight_storage_costs_ii_template_freightrawdata f
+        WHERE TRIM(f.origin::text) IN ('GFC', 'KFC', 'NFC')
+        GROUP BY TRIM(f.origin::text)
+        ORDER BY total_records DESC
+      `;
+      
+      const dataQuality = await query(dataQualityQuery);
+      console.log('\n🔍 Freight data quality by origin:');
+      dataQuality.rows.forEach((row, index) => {
+        console.log(`  ${index + 1}. ${row.origin}: ${row.total_records} total, ${row.valid_load} valid loads, ${row.valid_freight} valid freights, avg cost: ${row.avg_cost || 'N/A'}`);
+      });
+
+      // Debug specific SKU: 4001310601 with KFC->Saudi Arabia
+      console.log('\n🔍 Debug specific SKU: 4001310601');
+      
+      // Check freight data for this SKU
+      const skuFreightQuery = `
+        SELECT 
+          TRIM(f.origin::text) as origin,
+          TRIM(f.destination::text) as destination,
+          TRIM(f.fg_code::text) as fg_code,
+          TRIM(f.truck_load_uom::text) as truck_load,
+          TRIM(f.truck_freight_usd_truckload::text) as truck_freight,
+          CASE 
+            WHEN TRIM(f.truck_load_uom::text) ~ '^[0-9]+(\.[0-9]+)?$' 
+              AND TRIM(f.truck_freight_usd_truckload::text) ~ '^[0-9]+(\.[0-9]+)?$'
+              AND TRIM(f.truck_load_uom::text)::NUMERIC > 0
+            THEN TRIM(f.truck_freight_usd_truckload::text)::NUMERIC / TRIM(f.truck_load_uom::text)::NUMERIC
+            ELSE 0
+          END as calculated_cost
+        FROM freight_storage_costs_ii_template_freightrawdata f
+        WHERE TRIM(f.fg_code::text) = '4001310601'
+        ORDER BY origin, destination
+      `;
+      
+      const skuFreight = await query(skuFreightQuery);
+      console.log('Freight data for SKU 4001310601:');
+      if (skuFreight.rows.length > 0) {
+        skuFreight.rows.forEach((row, index) => {
+          console.log(`  ${index + 1}. ${row.origin}->${row.destination}: Load=${row.truck_load}, Freight=${row.truck_freight}, Cost=${row.calculated_cost}`);
+        });
+      } else {
+        console.log('  ❌ No freight data found for SKU 4001310601');
+      }
+
+      // Check T03 data for this SKU
+      const skuT03Query = `
+        SELECT wh, plt, cty, fgsku_code, cost_per_unit
+        FROM t03_primdist
+        WHERE fgsku_code = '4001310601'
+        ${uploadBatchId ? 'AND upload_batch_id = $1' : ''}
+        ORDER BY wh
+      `;
+      
+      const skuT03 = await query(skuT03Query, params);
+      console.log('T03 records for SKU 4001310601:');
+      if (skuT03.rows.length > 0) {
+        skuT03.rows.forEach((row, index) => {
+          console.log(`  ${index + 1}. WH=${row.wh}, PLT=${row.plt}, CTY=${row.cty}, Cost=${row.cost_per_unit}`);
+        });
+      } else {
+        console.log('  ❌ No T03 records found for SKU 4001310601');
+      }
+
+      // Test if this specific combination should match
+      const skuMatchQuery = `
+        SELECT 
+          t03.wh, t03.plt, t03.cty, 
+          f.origin, f.destination,
+          f.calculated_cost,
+          'MATCH' as status
+        FROM t03_primdist t03
+        JOIN (
+          SELECT 
+            TRIM(f.origin::text) as origin,
+            TRIM(f.destination::text) as destination,
+            TRIM(f.fg_code::text) as fg_code,
+            CASE 
+              WHEN TRIM(f.truck_load_uom::text) ~ '^[0-9]+(\.[0-9]+)?$' 
+                AND TRIM(f.truck_freight_usd_truckload::text) ~ '^[0-9]+(\.[0-9]+)?$'
+                AND TRIM(f.truck_load_uom::text)::NUMERIC > 0
+              THEN TRIM(f.truck_freight_usd_truckload::text)::NUMERIC / TRIM(f.truck_load_uom::text)::NUMERIC
+              ELSE 0
+            END as calculated_cost
+          FROM freight_storage_costs_ii_template_freightrawdata f
+          WHERE TRIM(f.fg_code::text) = '4001310601'
+        ) f ON (
+          UPPER(TRIM(t03.plt)) = UPPER(f.origin)
+          AND UPPER(TRIM(t03.cty)) = UPPER(f.destination)
+          AND TRIM(t03.fgsku_code) = f.fg_code
+        )
+        WHERE t03.fgsku_code = '4001310601'
+        ${uploadBatchId ? 'AND t03.upload_batch_id = $1' : ''}
+      `;
+      
+      const skuMatch = await query(skuMatchQuery, params);
+      console.log('Expected matches for SKU 4001310601:');
+      if (skuMatch.rows.length > 0) {
+        skuMatch.rows.forEach((row, index) => {
+          console.log(`  ${index + 1}. T03(${row.plt}->${row.cty}) matches Freight(${row.origin}->${row.destination}) = Cost: ${row.calculated_cost}`);
+        });
+      } else {
+        console.log('  ❌ No matches found for SKU 4001310601 - check PLT/CTY alignment');
+      }
+
+      // Let's test the matching logic before running the actual update
+      const matchTestQuery = `
+        SELECT 
+          t03.wh,
+          t03.plt,
+          t03.cty, 
+          t03.fgsku_code,
+          subquery.origin,
+          subquery.destination,
+          subquery.fg_code,
+          subquery.calculated_cost
+        FROM t03_primdist t03
+        JOIN (
+          SELECT 
+            TRIM(f.origin::text) as origin,
+            TRIM(f.destination::text) as destination,
+            TRIM(f.fg_code::text) as fg_code,
+            CASE 
+              WHEN TRIM(f.truck_load_uom::text) ~ '^[0-9]+(\.[0-9]+)?$' 
+                AND TRIM(f.truck_freight_usd_truckload::text) ~ '^[0-9]+(\.[0-9]+)?$'
+                AND TRIM(f.truck_load_uom::text)::NUMERIC > 0
+              THEN TRIM(f.truck_freight_usd_truckload::text)::NUMERIC / TRIM(f.truck_load_uom::text)::NUMERIC
+              ELSE 0
+            END as calculated_cost
+          FROM freight_storage_costs_ii_template_freightrawdata f
+          WHERE f.truck_load_uom IS NOT NULL 
+            AND f.truck_freight_usd_truckload IS NOT NULL
+            AND LOWER(TRIM(f.truck_load_uom::text)) NOT IN ('missing', '')
+            AND LOWER(TRIM(f.truck_freight_usd_truckload::text)) NOT IN ('missing', '')
+        ) subquery ON (
+          UPPER(TRIM(t03.plt)) = UPPER(subquery.origin)
+          AND UPPER(TRIM(t03.cty)) = UPPER(subquery.destination)
+          AND TRIM(t03.fgsku_code) = subquery.fg_code
+        )
+        ${uploadBatchId ? 'WHERE t03.upload_batch_id = $1' : ''}
+        ORDER BY t03.wh, subquery.calculated_cost DESC
+        LIMIT 20
+      `;
+      
+      const matchTest = await query(matchTestQuery, params);
+      console.log('\n🔍 Successful matches found (before update):');
+      if (matchTest.rows.length > 0) {
+        const warehouseCounts = {};
+        matchTest.rows.forEach((row, index) => {
+          console.log(`  ${index + 1}. WH: ${row.wh}, T03(${row.plt}->${row.cty}), Freight(${row.origin}->${row.destination}), Cost: ${row.calculated_cost}`);
+          warehouseCounts[row.wh] = (warehouseCounts[row.wh] || 0) + 1;
+        });
+        console.log('\n📊 Matches by warehouse:');
+        Object.entries(warehouseCounts).forEach(([wh, count]) => {
+          console.log(`  ${wh}: ${count} matches`);
+        });
+      } else {
+        console.log('  ❌ No successful matches found! Check origin/destination/fg_code alignment');
+      }
+
+      const result = await query(updateQuery, params);
+      console.log(`\n✅ Updated cost per unit for ${result.rowCount} T03 records using SQL script`);
+      
+      // After update, let's see results by warehouse
+      const updatedSampleQuery = `
+        SELECT wh, plt, cty, fgsku_code, cost_per_unit
+        FROM t03_primdist
+        WHERE cost_per_unit > 0 ${uploadBatchId ? 'AND upload_batch_id = $1' : ''}
+        ORDER BY wh, cost_per_unit DESC
+        LIMIT 15
+      `;
+      
+      const updatedSample = await query(updatedSampleQuery, params);
+      console.log('\n🔍 Sample T03 records with updated costs (by warehouse):');
+      if (updatedSample.rows.length > 0) {
+        const warehouseResults = {};
+        updatedSample.rows.forEach((row, index) => {
+          console.log(`  ${index + 1}. WH: ${row.wh}, PLT: ${row.plt}, CTY: ${row.cty}, FG: ${row.fgsku_code}, Cost: ${row.cost_per_unit}`);
+          warehouseResults[row.wh] = (warehouseResults[row.wh] || 0) + 1;
+        });
+        console.log('\n📊 Updated records by warehouse:');
+        Object.entries(warehouseResults).forEach(([wh, count]) => {
+          console.log(`  ${wh}: ${count} records with cost > 0`);
+        });
+      } else {
+        console.log('  ❌ No records found with cost_per_unit > 0 after update!');
+      }
+      
+      // COMMENTED OUT: Business rules that were overwriting SQL results
+      // Apply business rules: X warehouse should remain 0
+      // const xWarehouseUpdate = `
+      //   UPDATE t03_primdist 
+      //   SET cost_per_unit = 0,
+      //       updated_at = CURRENT_TIMESTAMP
+      //   WHERE wh = 'X' ${uploadBatchId ? 'AND upload_batch_id = $1' : ''}
+      // `;
+      // 
+      // const xResult = await query(xWarehouseUpdate, params);
+      // if (xResult.rowCount > 0) {
+      //   console.log(`✅ Applied X warehouse rule: set cost = 0 for ${xResult.rowCount} records`);
+      // }
+      
+      // Apply same factory-warehouse shipping rule: cost = 0
+      // const sameFactoryUpdate = `
+      //   UPDATE t03_primdist 
+      //   SET cost_per_unit = 0,
+      //       updated_at = CURRENT_TIMESTAMP
+      //   WHERE ((wh = 'GFCM' AND plt = 'GFC') OR
+      //          (wh = 'KFCM' AND plt = 'KFC') OR
+      //          (wh = 'NFCM' AND plt = 'NFC'))
+      //     ${uploadBatchId ? 'AND upload_batch_id = $1' : ''}
+      // `;
+      // 
+      // const sameFactoryResult = await query(sameFactoryUpdate, params);
+      // if (sameFactoryResult.rowCount > 0) {
+      //   console.log(`✅ Applied same factory-warehouse rule: set cost = 0 for ${sameFactoryResult.rowCount} records`);
+      // }
+      
+      return result.rowCount;
+    } catch (error) {
+      console.error('❌ Error updating cost per unit with SQL:', error);
+      throw error;
+    }
+  }
+
   // Get upload batches
   static async getUploadBatches() {
     try {

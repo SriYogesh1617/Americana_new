@@ -212,31 +212,8 @@ class T03Controller {
       
       // Get T02 data with all required fields for custom cost calculation
       console.log('📊 Fetching T02 data...');
-      
-      // First, check for duplicates in T02 data
-      const duplicateCheckQuery = `
-        SELECT wh, fgsku_code, month, COUNT(*) as count
-        FROM t02_data 
-        WHERE upload_batch_id = $1
-          AND wh IS NOT NULL 
-          AND cty IS NOT NULL
-          AND fgsku_code IS NOT NULL 
-          AND month IS NOT NULL
-        GROUP BY wh, fgsku_code, month
-        HAVING COUNT(*) > 1
-        ORDER BY count DESC
-      `;
-      
-      const duplicateResult = await query(duplicateCheckQuery, [uploadBatchId]);
-      if (duplicateResult.rows.length > 0) {
-        console.log(`⚠️  Found ${duplicateResult.rows.length} T02 duplicate combinations:`);
-        duplicateResult.rows.slice(0, 5).forEach((row, index) => {
-          console.log(`  ${index + 1}. WH: ${row.wh}, FG: ${row.fgsku_code}, Month: ${row.month} (${row.count} duplicates)`);
-        });
-      }
-      
       const t02Query = `
-        SELECT DISTINCT
+        SELECT 
           wh,
           cty,
           fgsku_code,
@@ -258,7 +235,7 @@ class T03Controller {
       `;
       
       const t02Result = await query(t02Query, [uploadBatchId]);
-      console.log(`Found ${t02Result.rows.length} T02 records to process (duplicates removed with DISTINCT)`);
+      console.log(`Found ${t02Result.rows.length} T02 records to process (1:1 mapping)`);
       
       if (t02Result.rows.length === 0) {
         console.log('❌ No T02 data found for this upload batch');
@@ -308,17 +285,17 @@ class T03Controller {
         // Use the actual warehouse from T02 data
         const warehouse = t02Row.wh;
         
-        // Map warehouse to correct country to match freight data
+        // Map warehouse to correct country based on T03 requirements
         let cty;
         switch (warehouse) {
           case 'GFCM':
-            cty = 'United Arab Emirates'; // Updated to match freight data
+            cty = 'UAE FS';
             break;
           case 'KFCM':
-            cty = 'Kuwait'; // Unchanged
+            cty = 'Kuwait';
             break;
           case 'NFCM':
-            cty = 'Saudi Arabia'; // Updated to match freight data
+            cty = 'KSA';
             break;
           case 'X':
             cty = 'X'; // For X warehouse, keep X as country
@@ -326,24 +303,6 @@ class T03Controller {
           default:
             cty = 'Unknown';
         }
-        
-        // OLD MAPPING - COMMENTED OUT (was causing SQL matching issues)
-        // switch (warehouse) {
-        //   case 'GFCM':
-        //     cty = 'UAE FS';
-        //     break;
-        //   case 'KFCM':
-        //     cty = 'Kuwait';
-        //     break;
-        //   case 'NFCM':
-        //     cty = 'KSA';
-        //     break;
-        //   case 'X':
-        //     cty = 'X';
-        //     break;
-        //   default:
-        //     cty = 'Unknown';
-        // }
         
         // Get PLT by matching T02 cty (market) + fgsku_code with demand data
         let plt = 'Unknown';
@@ -386,7 +345,6 @@ class T03Controller {
         // Convert month from string (e.g., "05") to integer
         const mthNum = parseInt(t02Row.month);
         
-        // OLD JAVASCRIPT COST CALCULATION LOGIC - REPLACED WITH SQL SCRIPT
         // Enhanced CostPerUnit logic with fallback system
         // 1. Cost per Case = Cost of shipping a full truck load / total cartons transported in truck load
         // 2. Calculate for each Factory + WH + FGSKUCode combination from Freight_storage_costs.xlsx
@@ -395,33 +353,31 @@ class T03Controller {
         // 5. Cost for shipping within the same country is 0
         // 6. Cost for same factory-warehouse shipping is 0
         
-        // REPLACED: Cost calculation now handled by SQL script after T03 records are inserted
-        let costPerUnit = 0; // Temporary value - will be updated by SQL script
+        let costPerUnit = 0;
         
-        // OLD LOGIC - COMMENTED OUT AND REPLACED WITH SQL SCRIPT
         // Rule 4: Cost for all X warehouse and factory rows is 0
-        // if (warehouse === 'X') {
-        //   costPerUnit = 0;
-        // } else {
-        //   // Get freight data for enhanced cost calculation
-        //   const freightData = await TransportCostCalculator.loadFreightData();
-        //   
-        //   // Calculate cost using the enhanced TransportCostCalculator
-        //   costPerUnit = TransportCostCalculator.calculateTransportCost(
-        //     cty, // country (cty)
-        //     warehouse, // warehouse (wh)
-        //     t02Row.fgsku_code, // fgsku code
-        //     freightData // processed freight data
-        //   );
-        // }
+        if (warehouse === 'X') {
+          costPerUnit = 0;
+        } else {
+          // Get freight data for enhanced cost calculation
+          const freightData = await TransportCostCalculator.loadFreightData();
+          
+          // Calculate cost using the enhanced TransportCostCalculator
+          costPerUnit = TransportCostCalculator.calculateTransportCost(
+            cty, // country (cty)
+            warehouse, // warehouse (wh)
+            t02Row.fgsku_code, // fgsku code
+            freightData // processed freight data
+          );
+        }
         
-        // OLD RULE 6: Cost = 0 for same factory-warehouse shipping
+        // NEW RULE 6: Cost = 0 for same factory-warehouse shipping
         // GFCM -> GFC, KFCM -> KFC, NFCM -> NFC should have cost = 0
-        // if ((warehouse === 'GFCM' && plt === 'GFC') ||
-        //     (warehouse === 'KFCM' && plt === 'KFC') ||
-        //     (warehouse === 'NFCM' && plt === 'NFC')) {
-        //   costPerUnit = 0;
-        // }
+        if ((warehouse === 'GFCM' && plt === 'GFC') ||
+            (warehouse === 'KFCM' && plt === 'KFC') ||
+            (warehouse === 'NFCM' && plt === 'NFC')) {
+          costPerUnit = 0;
+        }
         
         // Use fgwt_per_unit from T02 (handle null/undefined)
         const fgWtPerUnit = t02Row.fgwt_per_unit != null ? parseFloat(t02Row.fgwt_per_unit) : 0;
@@ -526,12 +482,8 @@ class T03Controller {
         console.log(`✅ Inserted batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(t03Records.length/batchSize)} (${result.length} records)`);
       }
       
-      // Update cost per unit using SQL script (AFTER records are inserted)
-      console.log('💰 Step 7: Updating cost per unit using SQL script...');
-      await T03Data.updateCostPerUnitWithSQL(uploadBatchId);
-      
       // Update calculated fields
-      console.log('🧮 Step 8: Updating calculated fields...');
+      console.log('🧮 Updating calculated fields...');
       await T03Data.updateAllCalculatedFields(uploadBatchId);
       
       console.log(`🎉 Successfully generated ${insertedCount} T03 records from T02 data!`);
@@ -938,14 +890,6 @@ class T03Controller {
       
       console.log('🔄 Starting T03 recalculation with formulas...');
       
-      // Step -1: Remove duplicates and add constraint
-      console.log('🧹 Step -1: Removing duplicate T03 records...');
-      const duplicatesRemoved = await T03Data.removeDuplicatesAndAddConstraint(upload_batch_id);
-      
-      // Step 0: Update CTY mapping to match freight data
-      console.log('🗺️ Step 0: Updating CTY mapping to match freight data...');
-      const ctyMappingUpdated = await T03Data.updateCtyMapping(upload_batch_id);
-      
       // First, update custom cost per unit based on warehouse rule
       console.log('🔄 Updating custom cost per unit based on warehouse rule...');
       const customCostUpdated = await T03Data.updateCustomCostPerUnit(upload_batch_id);
@@ -954,19 +898,17 @@ class T03Controller {
       console.log('🔄 Updating max quantity based on warehouse and factory rule...');
       const maxQtyUpdated = await T03Data.updateMaxQuantity(upload_batch_id);
       
-      // Third, update cost per unit using SQL script (MOVED TO END)
-      console.log('💰 Updating cost per unit using SQL script...');
-      const costPerUnitUpdated = await T03Data.updateCostPerUnitWithSQL(upload_batch_id);
+      // Third, update cost per unit with enhanced fallback system
+      console.log('🔄 Updating cost per unit with enhanced fallback system...');
+      const costPerUnitUpdated = await T03Data.updateCostPerUnit(upload_batch_id);
       
-      // LAST: Update calculated fields with formulas (depends on cost_per_unit being correct)
-      console.log('🧮 Updating calculated fields with formulas...');
+      // Then update calculated fields with formulas
       const updatedCount = await T03Data.updateCalculatedFieldsWithFormulas(upload_batch_id);
       
       res.json({
         success: true,
-        message: `Recalculated formulas for ${updatedCount} T03 records, updated CTY mapping for ${ctyMappingUpdated} records, updated custom cost for ${customCostUpdated} records, updated max quantity for ${maxQtyUpdated} records, and updated cost per unit for ${costPerUnitUpdated} records using SQL script`,
+        message: `Recalculated formulas for ${updatedCount} T03 records, updated custom cost for ${customCostUpdated} records, updated max quantity for ${maxQtyUpdated} records, and noted cost per unit enhancement for next generation`,
         updatedCount: updatedCount,
-        ctyMappingUpdated: ctyMappingUpdated,
         customCostUpdated: customCostUpdated,
         maxQtyUpdated: maxQtyUpdated,
         costPerUnitUpdated: costPerUnitUpdated
